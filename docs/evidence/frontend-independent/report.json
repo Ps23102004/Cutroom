@@ -1,0 +1,200 @@
+{
+  "url": "http://127.0.0.1:5173",
+  "started_at": "2026-09-07T20:40:27.192Z",
+  "captures": [
+    {
+      "route": "Home",
+      "viewport": "1440x900",
+      "path": "/Users/parthsingh/Developer/Cutroom/docs/evidence/frontend-independent/home-1440x900.png",
+      "label": "empty native-unavailable shell"
+    },
+    {
+      "route": "Projects",
+      "viewport": "1440x900",
+      "path": "/Users/parthsingh/Developer/Cutroom/docs/evidence/frontend-independent/projects-1440x900.png",
+      "label": "empty native-unavailable shell"
+    },
+    {
+      "route": "Studio",
+      "viewport": "1440x900",
+      "path": "/Users/parthsingh/Developer/Cutroom/docs/evidence/frontend-independent/studio-1440x900.png",
+      "label": "empty native-unavailable shell"
+    },
+    {
+      "route": "AI Briefs",
+      "viewport": "1440x900",
+      "path": "/Users/parthsingh/Developer/Cutroom/docs/evidence/frontend-independent/ai-briefs-1440x900.png",
+      "label": "empty native-unavailable shell"
+    },
+    {
+      "route": "Review",
+      "viewport": "1440x900",
+      "path": "/Users/parthsingh/Developer/Cutroom/docs/evidence/frontend-independent/review-1440x900.png",
+      "label": "empty native-unavailable shell"
+    },
+    {
+      "route": "Versions",
+      "viewport": "1440x900",
+      "path": "/Users/parthsingh/Developer/Cutroom/docs/evidence/frontend-independent/versions-1440x900.png",
+      "label": "empty native-unavailable shell"
+    },
+    {
+      "route": "Deliver",
+      "viewport": "1440x900",
+      "path": "/Users/parthsingh/Developer/Cutroom/docs/evidence/frontend-independent/deliver-1440x900.png",
+      "label": "empty native-unavailable shell"
+    },
+    {
+      "route": "Settings",
+      "viewport": "1440x900",
+      "path": "/Users/parthsingh/Developer/Cutroom/docs/evidence/frontend-independent/settings-1440x900.png",
+      "label": "empty native-unavailable shell"
+    },
+    {
+      "route": "Home",
+      "viewport": "1728x1117",
+      "path": "/Users/parthsingh/Developer/Cutroom/docs/evidence/frontend-independent/home-1728x1117.png",
+      "label": "empty native-unavailable shell"
+    },
+    {
+      "route": "Projects",
+      "viewport": "1728x1117",
+      "path": "/Users/parthsingh/Developer/Cutroom/docs/evidence/frontend-independent/projects-1728x1117.png",
+      "label": "empty native-unavailable shell"
+    },
+    {
+      "route": "Studio",
+      "viewport": "1728x1117",
+      "path": "/Users/parthsingh/Developer/Cutroom/docs/evidence/frontend-independent/studio-1728x1117.png",
+      "label": "empty native-unavailable shell"
+    },
+    {
+      "route": "AI Briefs",
+      "viewport": "1728x1117",
+      "path": "/Users/parthsingh/Developer/Cutroom/docs/evidence/frontend-independent/ai-briefs-1728x1117.png",
+      "label": "empty native-unavailable shell"
+    },
+    {
+      "route": "Review",
+      "viewport": "1728x1117",
+      "path": "/Users/parthsingh/Developer/Cutroom/docs/evidence/frontend-independent/review-1728x1117.png",
+      "label": "empty native-unavailable shell"
+    },
+    {
+      "route": "Versions",
+      "viewport": "1728x1117",
+      "path": "/Users/parthsingh/Developer/Cutroom/docs/evidence/frontend-independent/versions-1728x1117.png",
+      "label": "empty native-unavailable shell"
+    },
+    {
+      "route": "Deliver",
+      "viewport": "1728x1117",
+      "path": "/Users/parthsingh/Developer/Cutroom/docs/evidence/frontend-independent/deliver-1728x1117.png",
+      "label": "empty native-unavailable shell"
+    },
+    {
+      "route": "Settings",
+      "viewport": "1728x1117",
+      "path": "/Users/parthsingh/Developer/Cutroom/docs/evidence/frontend-independent/settings-1728x1117.png",
+      "label": "empty native-unavailable shell"
+    },
+    {
+      "route": "Studio",
+      "viewport": "1440x900",
+      "path": "/Users/parthsingh/Developer/Cutroom/docs/evidence/frontend-independent/studio-fixture-1440x900.png",
+      "label": "explicit development fixture [FIXTURE]"
+    }
+  ],
+  "checks": [
+    {
+      "name": "canonical_navigation",
+      "pass": true,
+      "expected": [
+        "Home",
+        "Projects",
+        "Studio",
+        "AI Briefs",
+        "Review",
+        "Versions",
+        "Deliver",
+        "Settings"
+      ],
+      "actual": [
+        "Home",
+        "Projects",
+        "Studio",
+        "AI Briefs",
+        "Review",
+        "Versions",
+        "Deliver",
+        "Settings"
+      ]
+    },
+    {
+      "name": "shell_geometry_1440x900",
+      "pass": true,
+      "sidebar": 216,
+      "topbar": 56,
+      "expected": {
+        "sidebar": 216,
+        "topbar": 56
+      }
+    },
+    {
+      "name": "shell_geometry_1728x1117",
+      "pass": true,
+      "sidebar": 216,
+      "topbar": 56,
+      "expected": {
+        "sidebar": 216,
+        "topbar": 56
+      }
+    },
+    {
+      "name": "native_unavailable_state",
+      "pass": true,
+      "native_state_visible": true
+    },
+    {
+      "name": "keyboard_tab",
+      "pass": true,
+      "focus": {
+        "tag": "BUTTON",
+        "text": "Home",
+        "visible": true
+      }
+    },
+    {
+      "name": "browser_create_rejection_unchanged_list",
+      "pass": true,
+      "modal_still_open": true,
+      "submit": {
+        "count": 1,
+        "disabled": false
+      },
+      "visible_error": true,
+      "projects_before": {
+        "count": "0",
+        "empty": true
+      },
+      "projects_after": {
+        "count": "0",
+        "empty": true
+      }
+    },
+    {
+      "name": "reduced_motion_live_switch",
+      "pass": true,
+      "canvases": 0,
+      "staticFallback": true
+    },
+    {
+      "name": "reduced_motion_fallback",
+      "pass": true,
+      "canvases": 0,
+      "staticFallback": true,
+      "nav": 8
+    }
+  ],
+  "status": "passed"
+}

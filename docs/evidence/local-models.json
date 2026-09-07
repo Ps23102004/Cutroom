@@ -1,0 +1,282 @@
+{
+  "status": "partial",
+  "api": "http://127.0.0.1:11434",
+  "api_probe_ms": 35.61,
+  "api_error": null,
+  "context_limit": 8192,
+  "questions": [
+    {
+      "id": "source-id",
+      "prompt": "Return JSON {source_id, reason}. Evidence: source_id=clip-01 contains the opening explanation. Use only this source.",
+      "expected_source_id": "clip-01"
+    },
+    {
+      "id": "constraint",
+      "prompt": "Return JSON {duration_seconds, action}. Brief requires <=30 seconds and forbids upload. Set duration_seconds=30 and action=local_edit.",
+      "expected_source_id": null
+    },
+    {
+      "id": "schema",
+      "prompt": "Return JSON with keys title, source_ids, caption_mode. Keep source_ids as an array and caption_mode as sidecar.",
+      "expected_source_id": null
+    },
+    {
+      "id": "support",
+      "prompt": "Return JSON {answer, source}. Based only on 'linked file missing' support note: ask the user to relink the original source; source='support:linked-file'.",
+      "expected_source_id": "support:linked-file"
+    }
+  ],
+  "deterministic_baseline": [
+    {
+      "id": "source-id",
+      "response": {
+        "source_id": "clip-01",
+        "reason": "matches supplied evidence"
+      },
+      "valid_grounding": true
+    },
+    {
+      "id": "constraint",
+      "response": {
+        "duration_seconds": 30,
+        "action": "local_edit"
+      },
+      "valid_grounding": true
+    },
+    {
+      "id": "schema",
+      "response": {
+        "title": "draft",
+        "source_ids": [],
+        "caption_mode": "sidecar"
+      },
+      "valid_grounding": true
+    },
+    {
+      "id": "support",
+      "response": {
+        "answer": "Ask the user to relink the original source.",
+        "source": "support:linked-file"
+      },
+      "valid_grounding": true
+    }
+  ],
+  "models": [
+    {
+      "model": "gemma4:e2b-mlx",
+      "manifest": "/Users/parthsingh/Library/Application Support/LocalModels/ollama-active/manifests/registry.ollama.ai/library/gemma4/e2b-mlx",
+      "manifest_sha256": "e98b54fe1913178321e1d9cd007d12a465de77a8f8eae37af69d2501ca03c6b5",
+      "config_digest": "sha256:5863900006bf2fb16612ffef4c07a878d4b675d6e95efab8f50e477b92dbe2bf",
+      "artifact_layer_count": 2073,
+      "manifest_bytes": 6504184877,
+      "metadata_layers": [
+        "config.json",
+        "generation_config.json",
+        "hf_quant_config.json",
+        "processor_config.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "draft/config.json",
+        "draft/generation_config.json",
+        "draft/tokenizer.json",
+        "draft/tokenizer_config.json"
+      ],
+      "runtime": "smoke-tested",
+      "show_keys": [
+        "capabilities",
+        "details",
+        "license",
+        "model_info",
+        "modelfile",
+        "modified_at",
+        "parameters",
+        "requires",
+        "template"
+      ],
+      "results": [
+        {
+          "id": "source-id",
+          "response": {
+            "source_id": "clip-01",
+            "reason": "clip-01 contains the opening explanation"
+          },
+          "response_preview": "```json\n{\n\"source_id\": \"clip-01\",\n\"reason\": \"clip-01 contains the opening explanation\"\n}\n```",
+          "response_chars": 92,
+          "valid_grounding": true,
+          "latency_ms": 2954.16,
+          "reported_model": "gemma4:e2b-mlx",
+          "done_reason": "stop",
+          "eval_token_counts": {
+            "prompt_eval_count": 42,
+            "eval_count": 34
+          }
+        },
+        {
+          "id": "constraint",
+          "response": {
+            "duration_seconds": 30,
+            "action": "local_edit"
+          },
+          "response_preview": "```json\n{\n\"duration_seconds\": 30,\n\"action\": \"local_edit\"\n}\n```",
+          "response_chars": 62,
+          "valid_grounding": true,
+          "latency_ms": 1859.43,
+          "reported_model": "gemma4:e2b-mlx",
+          "done_reason": "stop",
+          "eval_token_counts": {
+            "prompt_eval_count": 46,
+            "eval_count": 27
+          }
+        },
+        {
+          "id": "schema",
+          "response": {
+            "title": "Example Title",
+            "source_ids": [
+              101,
+              102,
+              103
+            ],
+            "caption_mode": "sidecar"
+          },
+          "response_preview": "```json\n{\n  \"title\": \"Example Title\",\n  \"source_ids\": [101, 102, 103],\n  \"caption_mode\": \"sidecar\"\n}\n```",
+          "response_chars": 104,
+          "valid_grounding": false,
+          "latency_ms": 1393.26,
+          "reported_model": "gemma4:e2b-mlx",
+          "done_reason": "stop",
+          "eval_token_counts": {
+            "prompt_eval_count": 42,
+            "eval_count": 50
+          }
+        },
+        {
+          "id": "support",
+          "response": {
+            "answer": "Please relink the original source.",
+            "source": "support:linked-file"
+          },
+          "response_preview": "```json\n{\n\"answer\": \"Please relink the original source.\",\n\"source\": \"support:linked-file\"\n}\n```",
+          "response_chars": 95,
+          "valid_grounding": true,
+          "latency_ms": 1238.21,
+          "reported_model": "gemma4:e2b-mlx",
+          "done_reason": "stop",
+          "eval_token_counts": {
+            "prompt_eval_count": 49,
+            "eval_count": 31
+          }
+        }
+      ],
+      "inference_status": "completed"
+    },
+    {
+      "model": "gemma4:e4b-mlx",
+      "manifest": "/Users/parthsingh/Library/Application Support/LocalModels/ollama-active/manifests/registry.ollama.ai/library/gemma4/e4b-mlx",
+      "manifest_sha256": "aa6f2058d5dcc8a92dad2e24e35d226ac522b12f7a4f1c395b52fe4bab69a2dd",
+      "config_digest": "sha256:5863900006bf2fb16612ffef4c07a878d4b675d6e95efab8f50e477b92dbe2bf",
+      "artifact_layer_count": 2192,
+      "manifest_bytes": 8797551778,
+      "metadata_layers": [
+        "config.json",
+        "generation_config.json",
+        "hf_quant_config.json",
+        "processor_config.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "draft/config.json",
+        "draft/generation_config.json",
+        "draft/tokenizer.json",
+        "draft/tokenizer_config.json"
+      ],
+      "runtime": "smoke-tested",
+      "show_keys": [
+        "capabilities",
+        "details",
+        "license",
+        "model_info",
+        "modelfile",
+        "modified_at",
+        "parameters",
+        "requires",
+        "template"
+      ],
+      "results": [
+        {
+          "id": "source-id",
+          "response": {
+            "source_id": "clip-01",
+            "reason": "The opening explanation is present in clip-01."
+          },
+          "response_preview": "```json\n{\n  \"source_id\": \"clip-01\",\n  \"reason\": \"The opening explanation is present in clip-01.\"\n}\n```",
+          "response_chars": 102,
+          "valid_grounding": true,
+          "latency_ms": 4599.41,
+          "reported_model": "gemma4:e4b-mlx",
+          "done_reason": "stop",
+          "eval_token_counts": {
+            "prompt_eval_count": 42,
+            "eval_count": 38
+          }
+        },
+        {
+          "id": "constraint",
+          "response": {
+            "duration_seconds": 30,
+            "action": "local_edit"
+          },
+          "response_preview": "{\"duration_seconds\": 30, \"action\": \"local_edit\"}",
+          "response_chars": 48,
+          "valid_grounding": true,
+          "latency_ms": 3840.65,
+          "reported_model": "gemma4:e4b-mlx",
+          "done_reason": "stop",
+          "eval_token_counts": {
+            "prompt_eval_count": 46,
+            "eval_count": 17
+          }
+        },
+        {
+          "id": "schema",
+          "response": {
+            "title": "Example Title",
+            "source_ids": [
+              "id1",
+              "id2"
+            ],
+            "caption_mode": "sidecar"
+          },
+          "response_preview": "```json\n{\n  \"title\": \"Example Title\",\n  \"source_ids\": [\n    \"id1\",\n    \"id2\"\n  ],\n  \"caption_mode\": \"sidecar\"\n}\n```",
+          "response_chars": 115,
+          "valid_grounding": false,
+          "latency_ms": 3956.89,
+          "reported_model": "gemma4:e4b-mlx",
+          "done_reason": "stop",
+          "eval_token_counts": {
+            "prompt_eval_count": 42,
+            "eval_count": 51
+          }
+        },
+        {
+          "id": "support",
+          "response": {
+            "answer": "Please relink the original source.",
+            "source": "support:linked-file"
+          },
+          "response_preview": "```json\n{\n  \"answer\": \"Please relink the original source.\",\n  \"source\": \"support:linked-file\"\n}\n```",
+          "response_chars": 99,
+          "valid_grounding": true,
+          "latency_ms": 3503.39,
+          "reported_model": "gemma4:e4b-mlx",
+          "done_reason": "stop",
+          "eval_token_counts": {
+            "prompt_eval_count": 49,
+            "eval_count": 33
+          }
+        }
+      ],
+      "inference_status": "completed"
+    }
+  ],
+  "model_inference": "completed with JSON/grounding validation"
+}

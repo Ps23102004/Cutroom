@@ -1,0 +1,5 @@
+{
+  "command": "node /Users/parthsingh/.agents/skills/impeccable/scripts/detect.mjs --json apps/desktop/src packages/ui/src packages/design-tokens/src",
+  "exit_code": 2,
+  "findings": [{"file": "apps/desktop/src/components/drawers/JobsDrawer.tsx", "line": 99, "severity": "warning", "rule": "layout-transition", "snippet": "transition: width"}]
+}

@@ -1,0 +1,12 @@
+{
+  "date": "2026-09-07",
+  "commands": [
+    {"command": "unzip -tqq <each Desktop zip>", "result": "PASS", "scope": "five archives"},
+    {"command": "safe_archive_inventory.py equivalent ZIP metadata scan", "result": "PASS", "details": "no traversal/absolute names or symlinks; executable-like entries only Git sample hooks in universal kits"},
+    {"command": "sw_vers; system_profiler SPHardwareDataType; df -h; ls /Volumes", "result": "PASS", "details": "macOS 27.0 arm64, M3 Pro, 36 GB, 124 GiB available; Project Dev absent"},
+    {"command": "ollama manifest metadata scan", "result": "PASS", "details": "Gemma4 E2B/E4B manifests present; no load/download attempted"},
+    {"command": "curl http://127.0.0.1:8188/system_stats", "result": "BLOCKED", "details": "ComfyUI server not listening"}
+  ],
+  "changed_files": ["docs/ENVIRONMENT.md", "docs/TOOLCHAIN_MANIFEST.json", "docs/DESIGN_SOURCES.json", "evidence/preflight.json", "scripts/safe_archive_inventory.py"],
+  "next_blockers": ["No base Cutroom implementation commit", "GLM provider credential check", "No running/provisioned 3D converter or Blender", "Project Dev volume absent"]
+}

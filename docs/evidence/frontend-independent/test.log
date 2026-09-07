@@ -1,0 +1,26 @@
+
+> cutroom-monorepo@0.1.0 test /Users/parthsingh/Developer/Cutroom
+> pnpm -r run test
+
+Scope: 3 of 4 workspace projects
+packages/design-tokens test$ vitest run
+packages/design-tokens test:  RUN  v4.1.5 /Users/parthsingh/Developer/Cutroom/packages/design-tokens
+packages/design-tokens test:  Test Files  1 passed (1)
+packages/design-tokens test:       Tests  7 passed (7)
+packages/design-tokens test:    Start at  16:40:18
+packages/design-tokens test:    Duration  99ms (transform 26ms, setup 0ms, import 32ms, tests 2ms, environment 0ms)
+packages/design-tokens test: Done
+packages/ui test$ vitest run
+packages/ui test:  RUN  v4.1.5 /Users/parthsingh/Developer/Cutroom/packages/ui
+packages/ui test:  Test Files  1 passed (1)
+packages/ui test:       Tests  3 passed (3)
+packages/ui test:    Start at  16:40:19
+packages/ui test:    Duration  339ms (transform 24ms, setup 0ms, import 73ms, tests 38ms, environment 164ms)
+packages/ui test: Done
+apps/desktop test$ vitest run
+apps/desktop test:  RUN  v4.1.5 /Users/parthsingh/Developer/Cutroom/apps/desktop
+apps/desktop test:  Test Files  8 passed (8)
+apps/desktop test:       Tests  46 passed (46)
+apps/desktop test:    Start at  16:40:19
+apps/desktop test:    Duration  750ms (transform 610ms, setup 0ms, import 1.22s, tests 370ms, environment 2.37s)
+apps/desktop test: Done

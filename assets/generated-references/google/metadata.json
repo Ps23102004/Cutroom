@@ -1,0 +1,21 @@
+{
+  "study": "Study A (Google)",
+  "tool": "generate_image",
+  "tool_version": "declared_native_tool",
+  "requested_route": "Nano Banana2/Pro (conditional on tool parameter exposure)",
+  "resolved_route": "generate_image (opaque backend / unverified; tool schema does not expose model or route selection)",
+  "backend_status": "model-unverified",
+  "prompt": "Single continuous physically thick editing ribbon, open shallow S-bend with no closed loop, matte clay surface, broad legible front and back edges, fully framed front three-quarter view, filling roughly 70% of the frame, plain light gray background, diffuse light, neutral studio lighting, no text, no UI, no props, no glow, no depth blur, sharp clean edges, geometry-friendly reference object",
+  "aspect_ratio": "1:1",
+  "source_artifact_path": "/Users/parthsingh/.gemini/antigravity-cli/brain/06a79476-f1d7-4024-9de6-c32a6ad97dd4/cutline_study_a_1788811026391.jpg",
+  "saved_path": "/Users/parthsingh/Developer/Cutroom/assets/generated-references/google/cutline_study_a.jpg",
+  "format": "JPEG",
+  "dimensions": {
+    "width": 1024,
+    "height": 1024
+  },
+  "file_size_bytes": 549103,
+  "sha256": "d85b0cf5811dd0a36dde9d550f0bdeb3c5d7d7810c7577664ac0b9c11de4bebc",
+  "color_profile": "sRGB IEC61966-2.1",
+  "generated_at": "2026-09-07T15:57:06-04:00"
+}

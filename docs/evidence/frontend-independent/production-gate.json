@@ -1,0 +1,9 @@
+{
+  "status": "passed",
+  "checks": {
+    "fixture": false,
+    "direction": true,
+    "title": "Cutroom"
+  },
+  "scope": "rebuilt Vite production preview DOM; no fixture affordance; renderer performance not assessed"
+}

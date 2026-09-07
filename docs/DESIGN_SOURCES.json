@@ -1,0 +1,10 @@
+{
+  "date": "2026-09-07",
+  "archives": [
+    {"path": "/Users/parthsingh/Desktop/Cutroom_Complete_Build_Pack.zip", "sha256": "f797d8728b7cab09b8e44de0ec2ff5b7ffea0c44459022b9880b6137eb916146", "role": "build instructions/templates", "status": "verified safe; extracted under references/build-pack"},
+    {"path": "/Users/parthsingh/Desktop/Universal-Design-AI-Kit-2026-09-07.zip", "sha256": "edd9bdb87b199f952496393d41ea1ad06f4da819212d01cc7265cfbf2e66a236", "role": "design skill/reference source", "status": "verified safe; no image/mesh assets found"}
+  ],
+  "selected_reference": "/Users/parthsingh/Developer/Cutroom/references/MASTER.md",
+  "conflicts": ["Build-pack DESIGN_CONFLICTS.md says current written requirements supersede older image concepts.", "No owner-supplied Cutroom UI image or mesh asset was located in the bounded search."],
+  "safety": {"path_traversal": false, "absolute_paths": false, "symlinks": false, "unexpected_executables": false, "archive_tests": "passed"}
+}

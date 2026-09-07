@@ -1,0 +1,161 @@
+{
+  "status": "partial",
+  "api": "http://127.0.0.1:11434",
+  "api_probe_ms": 32.25,
+  "api_error": null,
+  "context_limit": 8192,
+  "questions": [
+    {
+      "id": "source-id",
+      "prompt": "Return JSON {source_id, reason}. Evidence: source_id=clip-01 contains the opening explanation. Use only this source.",
+      "expected_source_id": "clip-01"
+    },
+    {
+      "id": "constraint",
+      "prompt": "Return JSON {duration_seconds, action}. Brief requires <=30 seconds and forbids upload. Set duration_seconds=30 and action=local_edit.",
+      "expected_source_id": null
+    },
+    {
+      "id": "schema",
+      "prompt": "Return JSON with keys title, source_ids, caption_mode. Keep source_ids as an array and caption_mode as sidecar.",
+      "expected_source_id": null
+    },
+    {
+      "id": "support",
+      "prompt": "Return JSON {answer, source}. Based only on 'linked file missing' support note: ask the user to relink the original source; source='support:linked-file'.",
+      "expected_source_id": "support:linked-file"
+    }
+  ],
+  "deterministic_baseline": [
+    {
+      "id": "source-id",
+      "response": {
+        "source_id": "clip-01",
+        "reason": "matches supplied evidence"
+      },
+      "grounding": "valid"
+    },
+    {
+      "id": "constraint",
+      "response": {
+        "duration_seconds": 30,
+        "action": "local_edit"
+      },
+      "grounding": "valid"
+    },
+    {
+      "id": "schema",
+      "response": {
+        "title": "draft",
+        "source_ids": [],
+        "caption_mode": "sidecar"
+      },
+      "grounding": "valid"
+    },
+    {
+      "id": "support",
+      "response": {
+        "answer": "Ask the user to relink the original source.",
+        "source": "support:linked-file"
+      },
+      "grounding": "valid"
+    }
+  ],
+  "models": [
+    {
+      "model": "gemma4:e2b-mlx",
+      "manifest": "/Users/parthsingh/Library/Application Support/LocalModels/ollama-active/manifests/registry.ollama.ai/library/gemma4/e2b-mlx",
+      "manifest_sha256": "e98b54fe1913178321e1d9cd007d12a465de77a8f8eae37af69d2501ca03c6b5",
+      "config_digest": "sha256:5863900006bf2fb16612ffef4c07a878d4b675d6e95efab8f50e477b92dbe2bf",
+      "layers": 2073,
+      "manifest_bytes": 6504184877,
+      "metadata_layers": [
+        "config.json",
+        "generation_config.json",
+        "hf_quant_config.json",
+        "processor_config.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "draft/config.json",
+        "draft/generation_config.json",
+        "draft/tokenizer.json",
+        "draft/tokenizer_config.json"
+      ],
+      "runtime": "not tested",
+      "results": [
+        {
+          "id": "source-id",
+          "error": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
+          "valid_grounding": false
+        },
+        {
+          "id": "constraint",
+          "error": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
+          "valid_grounding": false
+        },
+        {
+          "id": "schema",
+          "error": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
+          "valid_grounding": false
+        },
+        {
+          "id": "support",
+          "error": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
+          "valid_grounding": false
+        }
+      ],
+      "inference_status": "partial"
+    },
+    {
+      "model": "gemma4:e4b-mlx",
+      "manifest": "/Users/parthsingh/Library/Application Support/LocalModels/ollama-active/manifests/registry.ollama.ai/library/gemma4/e4b-mlx",
+      "manifest_sha256": "aa6f2058d5dcc8a92dad2e24e35d226ac522b12f7a4f1c395b52fe4bab69a2dd",
+      "config_digest": "sha256:5863900006bf2fb16612ffef4c07a878d4b675d6e95efab8f50e477b92dbe2bf",
+      "layers": 2192,
+      "manifest_bytes": 8797551778,
+      "metadata_layers": [
+        "config.json",
+        "generation_config.json",
+        "hf_quant_config.json",
+        "processor_config.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "draft/config.json",
+        "draft/generation_config.json",
+        "draft/tokenizer.json",
+        "draft/tokenizer_config.json"
+      ],
+      "runtime": "not tested",
+      "results": [
+        {
+          "id": "source-id",
+          "error": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
+          "valid_grounding": false
+        },
+        {
+          "id": "constraint",
+          "response": {
+            "duration_seconds": 30,
+            "action": "local_edit"
+          },
+          "valid_grounding": true,
+          "latency_ms": 3809.62,
+          "reported_model": "gemma4:e4b-mlx",
+          "done_reason": "stop"
+        },
+        {
+          "id": "schema",
+          "error": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
+          "valid_grounding": false
+        },
+        {
+          "id": "support",
+          "error": "JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
+          "valid_grounding": false
+        }
+      ],
+      "inference_status": "partial"
+    }
+  ],
+  "model_inference": "completed with JSON/grounding validation"
+}

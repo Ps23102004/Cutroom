@@ -1,0 +1,11 @@
+
+> cutroom-monorepo@0.1.0 typecheck /Users/parthsingh/Developer/Cutroom
+> pnpm -r run typecheck
+
+Scope: 3 of 4 workspace projects
+packages/design-tokens typecheck$ tsc --noEmit
+packages/design-tokens typecheck: Done
+packages/ui typecheck$ tsc --noEmit
+packages/ui typecheck: Done
+apps/desktop typecheck$ tsc --noEmit
+apps/desktop typecheck: Done

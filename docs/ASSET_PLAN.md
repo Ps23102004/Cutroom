@@ -1,0 +1,13 @@
+# Cutline asset brief v1
+
+Purpose: a small physical metaphor for arranging an edit. One continuous, thick ribbon bends gently once; no mascot, UI, text, orb, gallery or promotional claims. Place in a small onboarding/Home accent only and one short verified completion moment, never Studio media/timeline. The object conveys assembly, never numerical progress.
+
+Study A (Google): front three-quarter, open S-bend, matte clay reconstruction-friendly surface; one isolated object filling roughly 70% of a neutral square frame. Study B (OpenAI): meaningful alternate shallow folded-strip silhouette with physical thickness and broad readable faces, same editing family; satin violet front, wine reverse, narrow ochre edge, diffuse neutral light. Each route: one initial image, no extra generations without comparison. Named provider model must come from actual tool metadata; an opaque tool remains model-unverified. Existing authorized routes only; no new charges or private image input.
+
+Choose master by silhouette, subtlety, reconstructability and thickness. Refinement views must be tied to selected master and visually inspected for consistency. Converter contract is single-image ComfyUI Hunyuan3D 2.1, not a contact sheet. Current missing checkpoint/runtime prevents conversion; do not download or use remote Tencent API without a separate size/source/cost/storage authorization.
+
+Mesh target: one merged closed strip using one material/vertex colors for face/reverse/edge; <=25k triangles, <=2 scene draw calls, <=1024px textures if used, <=2MB compressed primary payload; static raster fallback <=40KB. These are targets, not measurements. Rig/deformation follows coherent ribbon topology. Keep editable source and generation/cleanup scripts, GLB plus bounds/normals/topology/hashes report.
+
+State contract: idle static, optional small pointer orientation, one short transition, one completion settle; no continuous motion during playback/editing/rendering. Demand rendering; offscreen/hidden/reduced-motion/disabled effects stops immediately. DPR <=1.5. Decorative canvas and fallback aria-hidden; status is real separate text. Lazy loading, disposal and no-WebGL fallback required.
+
+Approval: Astra selected the family from Gemini F0 and incorporated Terra T0 corrections. GLM5.3 review is quota-blocked, explicitly recorded; Terra is the narrow escalation reviewer. T0 correction verification returned APPROVED_WITH_CONDITIONS for one study/provider; the remaining availability wording condition has been corrected by Astra. Bounded studies may proceed. Art gate remains incomplete until actual assets, conversion or explicit fallback, and validation evidence exist.

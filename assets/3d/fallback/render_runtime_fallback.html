@@ -1,0 +1,12 @@
+<!doctype html><meta charset="utf-8"><title>Cutline runtime fallback render</title>
+<style>html,body{margin:0;width:256px;height:256px;background:transparent;overflow:hidden}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"./three.module.js"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from './GLTFLoader.js';
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(32,1,.1,100);camera.position.set(5.3,3.1,7.2);camera.lookAt(0,.2,0);
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,preserveDrawingBuffer:true});renderer.setSize(256,256);renderer.setPixelRatio(1);renderer.setClearColor(0,0);renderer.outputColorSpace=THREE.SRGBColorSpace;document.body.append(renderer.domElement);
+scene.add(new THREE.AmbientLight(0xffffff,1.8));const key=new THREE.DirectionalLight(0xffffff,3);key.position.set(4,6,7);scene.add(key);
+new GLTFLoader().load('./cutline-ribbon-fallback.glb',g=>{const root=g.scene;root.rotation.x=-.1;root.rotation.y=-.16;root.traverse(o=>{if(o.isMesh&&o.morphTargetInfluences)o.morphTargetInfluences[0]=0});scene.add(root);renderer.render(scene,camera);document.body.dataset.loaded='true';document.body.dataset.calls=String(renderer.info.render.calls);document.body.dataset.triangles=String(renderer.info.render.triangles)},undefined,e=>document.body.dataset.error=e.message);
+</script>

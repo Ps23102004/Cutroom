@@ -1,0 +1,91 @@
+{
+  "date": "2026-09-07",
+  "workspace": "/Users/parthsingh/Developer/Cutroom",
+  "status": "preflight",
+  "routes": {
+    "codex": {
+      "requested": "Codex CLI",
+      "resolved": "/Users/parthsingh/.local/bin/codex",
+      "status": "available/untested",
+      "version": "0.153.4"
+    },
+    "claude": {
+      "requested": "Claude Code",
+      "resolved": "/Users/parthsingh/.local/bin/claude",
+      "version": "2.1.263",
+      "status": "available/untested"
+    },
+    "glm": {
+      "requested": "GLM 5.3/5.2",
+      "resolved": "glm-5.3 and glm-5.2 explicitly requested via api.z.ai/api/anthropic; inference rejected",
+      "status": "blocked: 429/1310 weekly/monthly quota exhausted",
+      "reset_provider_text": "2026-09-10 00:34:16 (timezone unspecified)"
+    },
+    "kimi": {
+      "requested": "separate Kimi route",
+      "resolved": "/Users/parthsingh/.kimi-code/bin/kimi 0.37.2",
+      "status": "available/untested"
+    },
+    "loc": {
+      "requested": "LOC",
+      "resolved": "/Users/parthsingh/.local/bin/loc",
+      "status": "available/untested"
+    },
+    "agy": {
+      "requested": "AGY/AGI/Antigravity",
+      "resolved": "/Users/parthsingh/.local/bin/agy 1.1.27; catalog gemini-3.8-flash-high",
+      "status": "actual design/frontend/image calls; two follow-up timeouts preserved",
+      "config_root": "/Users/parthsingh/.gemini/antigravity-cli"
+    },
+    "omni": {
+      "requested": "omni/OmniRoute",
+      "resolved": "/Users/parthsingh/.local/bin/omni",
+      "status": "present; server not running; not invoked in follow-up to avoid persistent startup"
+    },
+    "prime_agent": {
+      "requested": "Prime Agent",
+      "resolved": "/Users/parthsingh/.local/bin/prime-agent",
+      "version": "0.9.1",
+      "status": "present/version tested; inference untested"
+    },
+    "kimicc": {
+      "requested": "KimiCC",
+      "resolved": "/Users/parthsingh/.local/bin/kimicc -> zsh function -> Claude Code api.kimi.com/coding",
+      "configured_model": "k3[1m]",
+      "status": "present/source inspected; inference untested"
+    }
+  },
+  "media": {
+    "ffmpeg": {
+      "path": "/opt/homebrew/bin/ffmpeg",
+      "version": "9.0.1",
+      "status": "executed synthetic generation/probe/decode; not Cutroom export certification"
+    },
+    "ffprobe": {
+      "path": "/opt/homebrew/bin/ffprobe",
+      "version": "9.0.1",
+      "status": "executed synthetic generation/probe/decode; not Cutroom export certification"
+    },
+    "tauri": {
+      "status": "missing CLI"
+    },
+    "blender": {
+      "status": "missing CLI"
+    }
+  },
+  "ollama": {
+    "root": "/Users/parthsingh/Library/Application Support/LocalModels/ollama-fallback",
+    "server": "Existing loopback service verified outside sandbox; see actual evaluation evidence",
+    "models": {
+      "gemma4/e2b-mlx": {
+        "manifest_bytes": 6504184877,
+        "artifact_layer_count": 2073
+      },
+      "gemma4/e4b-mlx": {
+        "manifest_bytes": 8797551778,
+        "artifact_layer_count": 2192
+      }
+    },
+    "inference_test": "docs/evidence/local-models.json; preliminary not certification"
+  }
+}

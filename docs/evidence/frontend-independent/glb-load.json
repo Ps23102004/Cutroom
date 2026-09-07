@@ -1,0 +1,14 @@
+{
+  "status": "load-observed",
+  "resources": [
+    {
+      "name": "http://127.0.0.1:5173/assets/3d/fallback/cutline-runtime-fallback.png",
+      "status": 200
+    },
+    {
+      "name": "http://127.0.0.1:5173/assets/3d/fallback/cutline-ribbon-fallback.glb",
+      "status": 200
+    }
+  ],
+  "scope": "HTTP/resource load only; no renderer/performance claim; no console-error assertion captured"
+}

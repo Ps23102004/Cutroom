@@ -1,0 +1,65 @@
+{
+  "date": "2026-09-07",
+  "status": "blocked",
+  "candidate": {
+    "tool": "ComfyUI Hunyuan3D 2.1",
+    "root": "/Users/parthsingh/Developer/ComfyUI",
+    "local_node": "/Users/parthsingh/Developer/ComfyUI/comfy_extras/nodes_hunyuan3d.py",
+    "api_node": "/Users/parthsingh/Developer/ComfyUI/comfy_api_nodes/nodes_hunyuan3d.py",
+    "workflow": "/Users/parthsingh/Developer/ComfyUI/blueprints/Image to Model (Hunyuan3d 2.1).json",
+    "input_contract": "single IMAGE input for the local workflow; the API route also exposes image-to-model and outputs GLB/OBJ",
+    "model_checkpoint": "hunyuan_3d_v2.1.safetensors",
+    "output_contract": [
+      "GLB",
+      "OBJ",
+      "texture image"
+    ]
+  },
+  "runtime_requirements": {
+    "python": "ComfyUI README documents Python 3.12+ routes; host Python is 3.14.7",
+    "required_packages": [
+      "torch",
+      "torchvision",
+      "torchaudio",
+      "transformers>=4.50.3",
+      "safetensors>=0.4.2",
+      "Pillow",
+      "scipy",
+      "comfy-kitchen==0.2.31"
+    ],
+    "host_check": {
+      "torch_importable": false,
+      "blender_cli": false,
+      "comfyui_server_127_0_0_1_8188": false
+    },
+    "installed_venv": {
+      "python": "/Users/parthsingh/Developer/ComfyUI/.venv/bin/python",
+      "python_version": "3.14.7",
+      "torch_version": "2.13.0",
+      "torch_import": "passed",
+      "mps_in_sandbox": false,
+      "mps_note": "sandbox result not hardware certification"
+    }
+  },
+  "weights": {
+    "local_matching_files": [],
+    "blueprint_declared_checkpoint": "hunyuan_3d_v2.1.safetensors",
+    "download_or_load_attempted": false,
+    "configured_pointer": "/Users/parthsingh/Library/Application Support/LocalModels/comfyui-active",
+    "resolved_target": "/Volumes/Project Dev/AI/comfyui-models",
+    "status": "configured external store unavailable because volume is not mounted"
+  },
+  "documented_invocation": {
+    "local": "Use existing .venv/bin/python main.py --listen 127.0.0.1 after configured model volume is available; inspect hardware flags before execution.",
+    "workflow": "Load the Image to Model (Hunyuan3d 2.1) workflow, provide one approved geometry-friendly image, select hunyuan_3d_v2.1.safetensors, execute, then validate exported GLB/OBJ.",
+    "api": "The API node uses authenticated Comfy proxy calls to /proxy/tencent/hunyuan/3d-pro and its query endpoint; this is chargeable/remote and was not invoked."
+  },
+  "blockers": [
+    "Configured existing model store is on absent Project Dev volume; contents cannot currently be verified",
+    "No local checkpoint weights found",
+    "ComfyUI server is not running",
+    "Blender is not installed",
+    "Remote API route would require explicit credentials/authorization and may incur charges"
+  ],
+  "evidence_scope": "read-only source and metadata inspection; no install, download, server start, model load, or conversion"
+}

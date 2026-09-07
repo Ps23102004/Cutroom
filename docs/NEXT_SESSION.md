@@ -1,0 +1,23 @@
+# Resume Cutroom from this checkpoint
+
+Objective: complete the full `references/MASTER.md` mandate, not a screenshot-only app. Current implementation is explicitly a frontend/tooling foundation. Read `docs/BUILD_STATE.md`, `docs/TEST_EVIDENCE.md`, `docs/KNOWN_LIMITATIONS.md` and `docs/AGENT_LEDGER.jsonl` before touching source. Read the full master when not already loaded. Keep all 79 required entries in feature traceability.
+
+Repository: `/Users/parthsingh/Developer/Cutroom`, branch `main`. The foundation code commit will be appended below after creation. No public remote/push/deployment. Preserve unrelated `/Users/parthsingh/Developer/ai-tools/OpenCut` and its untracked `apps/web/bun.lock`; no reset or broad cleanup.
+
+Actual orchestrator: GPT6 Astra root. Real Gemini `gemini-3.8-flash-high` through AGY implemented F0/F1/F1R/F2/F3/F4. F1R/F2 timed out; patches were retained, corrected and verified. Luna `gpt-5.6-luna` ran archives/tool/media/ASR/AI/asset/browser tasks. Terra `gpt-5.6-terra` ran only T0 narrow design review. Fresh parent-runtime agents supplied scoped UI finish review/docs. Exact receipts/usage/IDs in ledger; no simulated GLM contribution.
+
+Immediate blocker: GLM5.2 and 5.3 actual calls returned 429/1310 quota exhausted; provider reset text 2026-09-10 00:34:16, timezone unspecified. User was asked whether separate Astra backend/review workers may substitute. **No answer received at checkpoint.** Do not treat silence as permission or quietly reassign. Existing glm aliases/auth/routes are healthy enough to authenticate; do not reinstall wrappers or change keys/accounts. Retry once only after capacity restoration or an explicit authorized routing decision.
+
+Next executable task when authorized: dispatch `docs/tasks/B0.md` to backend owner. It owns Cargo workspace/crates and ARCHITECTURE/DATA_MODEL/CONTRACTS docs, not apps/packages. Implement actual SQLite project/composition/revision/operation-receipt core with rational tick strings, expected-version checks, idempotency digest and safe source ranges. Required tests: independent-store reopen, stale write rejection, changed-payload operation-ID reuse, invalid source range, immutable hash, rollback. Independent planning/security review is a separate worker, followed by real native dispatch integration with existing frontend. Do not accept mocked-native client tests as database/media proof.
+
+Subsequent dependency order: native project/import/edit/save/reopen/export slice; durable media/jobs/cancel/restart recovery; dedicated ASR/search and grounded Gemma4E2B/E4B proposal evaluation/backend policy; versions and hosted review isolation/exact-version approvals; verified delivery/archive/restore; offline support/diagnostics/consented tickets/operator service; native packaging/signing and explicit hosted deployment; full end-to-end/quality/showcase evidence. Signing/publication/spending remain separate authorization boundaries.
+
+Independent converter blocker: ComfyUI sources and healthy Python/Torch venv exist, configured weights point to missing `/Volumes/Project Dev`. No image-to-mesh conversion happened. Existing actual GLB is procedural and honestly labeled. Keep generated image studies/provenance; both initial silhouettes rejected. Do not redownload models or substitute a paid remote converter silently. Next converter task starts by confirming the configured drive/weights are now accessible.
+
+Preview command: `pnpm --filter @cutroom/desktop dev --host 127.0.0.1`. Vite loopback URL 5173. Development fixtures explicitly use `[FIXTURE]`; no private media. `pnpm build` produces browser bundle only, not a native package. Final 56 frontend tests passed (7 tokens + 3 UI + 46 desktop), 4 archive tests passed; see exact recorded limits and later copy-only rebuild in test evidence. `node scripts/verify_frontend.mjs` expects the dev server and existing Playwright CLI. Do not rerun model smoke or image generation just to reproduce already-valid evidence.
+
+Real installed-tool evidence: synthetic FFmpeg H264/AAC generation/probe/decode, cached Whisper tiny CPU transcript with word timestamps but one name error, actual 8 Gemma calls with 6 valid synthetic answers and evaluation-contract caveat. No customer product capability certification follows from these.
+
+Local rollback: use the isolated foundation commit as reference, preserve this checkpoint and new user work. Do not reset unrelated repositories or wipe generated evidence. No agent continues work outside the active turn.
+
+At checkpoint: root Vite session 22655 stopped with exit 0; Luna closed its own production preview and browsers. No ongoing worker process. Start the preview command explicitly when needed.

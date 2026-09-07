@@ -1,0 +1,15 @@
+{
+  "date": "2026-09-07",
+  "status": "PASS_WITH_CAVEAT",
+  "engine": {"binary": "/Users/parthsingh/.local/bin/whisper", "python": "/Users/parthsingh/.local/pipx/venvs/openai-whisper/bin/python", "package": "openai-whisper", "version": "20250625", "torch": "2.12.0"},
+  "model": {"requested": "tiny", "resolved": "/Users/parthsingh/.cache/whisper/tiny.pt", "bytes": 75572083, "downloaded": false},
+  "fixture": {"kind": "synthetic macOS say speech", "text": "Cutroom local transcription smoke test. The ribbon bends once, then returns to rest.", "source": "say -v Samantha", "aiff_sha256": "bd320091e71957830d2eaa61987a5a0e3ff7eeddb3fa9912dc3d8c7cd8a49869", "wav": "tests/fixtures/asr-smoke/cutroom-smoke.wav", "wav_sha256": "860478d1e172e67af82af814dc47c9fd802c5c3d5d33b25463028cd4a917e95f"},
+  "command": "whisper tests/fixtures/asr-smoke/cutroom-smoke.wav --model tiny --model_dir /Users/parthsingh/.cache/whisper --device cpu --language en --task transcribe --output_format json --output_dir tests/fixtures/asr-smoke --word_timestamps True --fp16 False --verbose False",
+  "exit_code": 0,
+  "elapsed_seconds": 3.19,
+  "result_json": "tests/fixtures/asr-smoke/cutroom-smoke.json",
+  "result_sha256": "c27519fa224c3fde16dd96f3446af1bdcefbdd17213a55bf5b7377b731fb849f",
+  "transcript": "Cotrum Local Transcription Smoke Test, the ribbon bends once, then returns to rest.",
+  "segment": {"start": 0.0, "end": 5.28, "word_timestamps": true},
+  "caveats": ["Synthetic TTS fixture only; no private speech.", "The tiny model misrecognized Cutroom as Cotrum; this is a smoke preflight, not accuracy certification.", "No production route or service was altered."]
+}

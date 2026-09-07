@@ -1,0 +1,46 @@
+{
+  "packet": "Cutroom full-product build instructions",
+  "created": "2026-09-07",
+  "files": [
+    {
+      "path": "AGENT_TASK_TEMPLATE.md",
+      "bytes": 1502,
+      "sha256": "2e41cf2a1b76b80de97090f25a4ed74331ef812323e493a1c6e3bf974132b851"
+    },
+    {
+      "path": "ASSET_REQUEST_TEMPLATE.md",
+      "bytes": 3356,
+      "sha256": "97ac69d5ee4e1a0229b67a71a584900c837416b7889f6b8886428a131bc120a3"
+    },
+    {
+      "path": "Cutroom_GPT6_Astra_Master_Build_Prompt.md",
+      "bytes": 85456,
+      "sha256": "4cefec2be34fe6543870063ec0c977e8357ce3975744d25226dfd9996f527472"
+    },
+    {
+      "path": "DESIGN_CONFLICTS.md",
+      "bytes": 3079,
+      "sha256": "ee955bc985c45a0dac6d959573acd21be2e024045c6cd367092f21329b28effb"
+    },
+    {
+      "path": "FEATURE_ACCEPTANCE_STARTER.json",
+      "bytes": 39030,
+      "sha256": "3089f8263d198cde91b64fbfd5de5db09b732f21c06c891c0189e1776c0c0d1b"
+    },
+    {
+      "path": "ROLE_ROUTING_STARTER.json",
+      "bytes": 5178,
+      "sha256": "a16487cd83927e8acf18b33fe17606cab6af85391ee873cdcac34adee5ac4071"
+    },
+    {
+      "path": "START_HERE.md",
+      "bytes": 4973,
+      "sha256": "9fa577e9dfd0ec1e91b7061301b4a9c2dd82434ba7ab76d7b35ab8652f802ab1"
+    },
+    {
+      "path": "historical/Original_Blueprint_v0.1_NOT_CURRENT.md",
+      "bytes": 65683,
+      "sha256": "e01c364b28eb5ae2d836b1ad002d686ca1c69d1411bc894880cff1250f0717f9"
+    }
+  ]
+}

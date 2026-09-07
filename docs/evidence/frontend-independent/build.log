@@ -1,0 +1,25 @@
+
+> cutroom-monorepo@0.1.0 build /Users/parthsingh/Developer/Cutroom
+> pnpm -r run build
+
+Scope: 3 of 4 workspace projects
+packages/design-tokens build$ tsc --noEmit
+packages/design-tokens build: Done
+packages/ui build$ tsc --noEmit
+packages/ui build: Done
+apps/desktop build$ tsc --noEmit && vite build
+apps/desktop build: vite v6.0.7 building for production...
+apps/desktop build: transforming...
+apps/desktop build: ✓ 70 modules transformed.
+apps/desktop build: rendering chunks...
+apps/desktop build: computing gzip size...
+apps/desktop build: dist/index.html                          1.14 kB │ gzip:   0.71 kB
+apps/desktop build: dist/assets/index-B006o9sv.css           2.43 kB │ gzip:   1.12 kB
+apps/desktop build: dist/assets/index-CwrXK5Rk.js          312.92 kB │ gzip:  84.68 kB
+apps/desktop build: dist/assets/CutlineCanvas-kW_DcdGN.js  608.34 kB │ gzip: 155.80 kB
+apps/desktop build: (!) Some chunks are larger than 500 kB after minification. Consider:
+apps/desktop build: - Using dynamic import() to code-split the application
+apps/desktop build: - Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+apps/desktop build: - Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+apps/desktop build: ✓ built in 850ms
+apps/desktop build: Done
