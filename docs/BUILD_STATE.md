@@ -3,7 +3,7 @@
 ## Disposition
 **PARTIAL foundation; full build blocked. Not a working native studio or release candidate.** Full 947-line mandate read and preserved at `references/MASTER.md` (SHA-256 `4cefec2be34fe6543870063ec0c977e8357ce3975744d25226dfd9996f527472`). No required feature is silently excluded to claim completion.
 
-Repository `/Users/parthsingh/Developer/Cutroom`, branch `main`, created for this task. Code checkpoint commit will be recorded in the handoff and final response after verification. Unrelated OpenCut HEAD `df6c16413c601d28778b1769e1048399b86c055a` and its existing untracked `apps/web/bun.lock` preserved.
+Repository `/Users/parthsingh/Developer/Cutroom`, branch `main`, created for this task. Verified foundation code commit: `38a36f475fee9f1259ad832b30bcd129f639e590`. A following documentation-only commit records this checkpoint; working tree was clean after the foundation commit. Unrelated OpenCut HEAD `df6c16413c601d28778b1769e1048399b86c055a` and its existing untracked `apps/web/bun.lock` preserved.
 
 ## Implemented and measured
 - React/TypeScript frontend, eight canonical routes, shared 216px sidebar/56px top bar, tokens and component library. Provisional native dispatch contract fails closed in ordinary browser mode; sample state is development-only.

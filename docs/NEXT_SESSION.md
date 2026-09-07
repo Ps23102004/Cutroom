@@ -2,7 +2,7 @@
 
 Objective: complete the full `references/MASTER.md` mandate, not a screenshot-only app. Current implementation is explicitly a frontend/tooling foundation. Read `docs/BUILD_STATE.md`, `docs/TEST_EVIDENCE.md`, `docs/KNOWN_LIMITATIONS.md` and `docs/AGENT_LEDGER.jsonl` before touching source. Read the full master when not already loaded. Keep all 79 required entries in feature traceability.
 
-Repository: `/Users/parthsingh/Developer/Cutroom`, branch `main`. The foundation code commit will be appended below after creation. No public remote/push/deployment. Preserve unrelated `/Users/parthsingh/Developer/ai-tools/OpenCut` and its untracked `apps/web/bun.lock`; no reset or broad cleanup.
+Repository: `/Users/parthsingh/Developer/Cutroom`, branch `main`. Verified foundation code commit: `38a36f475fee9f1259ad832b30bcd129f639e590`. This handoff commit only updates checkpoint documentation; `git rev-parse HEAD` identifies it. No public remote/push/deployment. Preserve unrelated `/Users/parthsingh/Developer/ai-tools/OpenCut` and its untracked `apps/web/bun.lock`; no reset or broad cleanup.
 
 Actual orchestrator: GPT6 Astra root. Real Gemini `gemini-3.8-flash-high` through AGY implemented F0/F1/F1R/F2/F3/F4. F1R/F2 timed out; patches were retained, corrected and verified. Luna `gpt-5.6-luna` ran archives/tool/media/ASR/AI/asset/browser tasks. Terra `gpt-5.6-terra` ran only T0 narrow design review. Fresh parent-runtime agents supplied scoped UI finish review/docs. Exact receipts/usage/IDs in ledger; no simulated GLM contribution.
 
