@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "family": "Cutline",
+  "brief": "docs/ASSET_PLAN.md",
+  "assets": [
+    {
+      "path": "assets/generated-references/openai/cutline-study-B-openai.png",
+      "sha256": "6d950f3819e97accbcb355d80b2651a23510e95786912640bd7b6ae87dcbe2ce",
+      "bytes": 1752567
+    },
+    {
+      "path": "assets/generated-references/google/cutline_study_a.jpg",
+      "sha256": "d85b0cf5811dd0a36dde9d550f0bdeb3c5d7d7810c7577664ac0b9c11de4bebc",
+      "bytes": 549103
+    },
+    {
+      "path": "assets/3d/fallback/cutline-ribbon-fallback.glb",
+      "sha256": "67bdec38a03ee516ef21b708d7172baa5f0d1051ab100f530b84639622363987",
+      "bytes": 55812
+    },
+    {
+      "path": "assets/3d/fallback/cutline-webgl-rest.png",
+      "sha256": "7d53ab4c001716bad10e17f905bb531ebc6faec5b14360f2943b998af20f3370",
+      "bytes": 6250
+    },
+    {
+      "path": "assets/3d/fallback/cutline-webgl-bent.png",
+      "sha256": "fc254d6e3f83426a0ad9031e9424eb6cb8e8615918d3a1ab31acfbc3cea1c9f1",
+      "bytes": 7300
+    },
+    {
+      "path": "assets/3d/fallback/cutline-runtime-fallback.png",
+      "sha256": "77abc261b8c132d9fcaf25ff2f7261699228d606971631720fcc61ab4dbbf6ad",
+      "bytes": 2341,
+      "purpose": "runtime static fallback; new transparent WebGL rendering of actual mesh",
+      "editable_source": "assets/3d/fallback/render_runtime_fallback.html"
+    }
+  ],
+  "openai": {
+    "requested": "GPT Image 2",
+    "resolved": "image_gen route, embedded metadata gpt-image2.0",
+    "status": "material reference only; closed-loop silhouette rejected"
+  },
+  "google": {
+    "requested": "Nano Banana2/Pro through AGY",
+    "resolved": "generate_image; opaque underlying backend",
+    "status": "real image output; disconnected silhouette rejected"
+  },
+  "mesh": {
+    "method": "procedural from brief; not image converted",
+    "generator": "assets/3d/fallback/generate_cutline_fallback.py",
+    "converter_invoked": false,
+    "converter_blocker": "configured weights on absent Project Dev volume",
+    "triangles": 388,
+    "materials": 1,
+    "observed_draw_calls": 1,
+    "webgl_evidence": "docs/evidence/L4-assets.md",
+    "morph": "BendToStraight POSITION+NORMAL deltas",
+    "animation_evidence": "two rendered endpoint states; no timed video recorded"
+  },
+  "rights_notes": "Development-generated original studies and procedural geometry; no third-party footage. Provider rights review and release licensing remain open.",
+  "runtime_integration": "Home-only lazy renderer integrated; static reduced-motion fallback browser tested; runtime GLB HTTP200 load observed; actual mesh renders in separate L4/L7 WebGL harness. Product GPU/performance assertions unverified."
+}

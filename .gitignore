@@ -1,0 +1,14 @@
+node_modules/
+target/
+dist/
+.env
+.env.*
+!.env.example
+.DS_Store
+.runtime/
+.playwright-cli/
+docs/evidence/raw/
+*.sqlite*
+__pycache__/
+*.py[cod]
+.pytest_cache/

@@ -1,0 +1,69 @@
+@import '@cutroom/design-tokens/css';
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-app, #19161F);
+  color: var(--text-primary, #F3F0F6);
+  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+  font-size: 14px;
+  line-height: 1.43;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  display: flex;
+}
+
+/* Accessible focus ring for keyboard navigation */
+:focus-visible {
+  outline: 2px solid var(--border-focus, #A18AF7) !important;
+  outline-offset: 2px !important;
+}
+
+/* Discrete, clean dark scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-app, #19161F);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-default, #443B4F);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong, #635773);
+}
+
+/* Animations */
+@keyframes cutroom-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes cutroom-slide-left {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+/* Utility classes */
+.font-mono {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+}

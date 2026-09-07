@@ -1,0 +1,10 @@
+{
+  "questions": [
+    {"id": "source-id", "expected_source_id": "clip-01"},
+    {"id": "constraint", "required": {"duration_seconds": 30, "action": "local_edit"}},
+    {"id": "schema", "required_keys": ["title", "source_ids", "caption_mode"]},
+    {"id": "support", "expected_source_id": "support:linked-file"}
+  ],
+  "context_limit": 8192,
+  "model_policy": "one model at a time; no downloads"
+}
