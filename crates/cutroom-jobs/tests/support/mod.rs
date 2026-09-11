@@ -77,7 +77,7 @@ pub fn sha256(path: &Path) -> String {
 #[allow(dead_code)]
 pub fn assert_artifact(path: &Path) {
     assert!(path.is_file(), "missing artifact: {}", path.display());
-    let probe = MediaEngine::homebrew()
+    let probe = MediaEngine::discover()
         .unwrap()
         .probe(path, &CancellationToken::new())
         .unwrap();

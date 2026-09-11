@@ -37,7 +37,7 @@ fn make_engine(
         ..
     } = fixture;
     let database = Arc::new(Mutex::new(raw_database));
-    let engine = JobEngine::new(Arc::clone(&database), MediaEngine::homebrew().unwrap());
+    let engine = JobEngine::new(Arc::clone(&database), MediaEngine::discover().unwrap());
     (engine, database, project_id, revision_id, directory)
 }
 
@@ -140,7 +140,7 @@ fn process_termination_recovery_retries_once_without_duplicate_or_false_success(
 
     thread::sleep(Duration::from_millis(1_200));
     let database = Arc::new(Mutex::new(Database::open(&database_path).unwrap()));
-    let engine = JobEngine::new(Arc::clone(&database), MediaEngine::homebrew().unwrap());
+    let engine = JobEngine::new(Arc::clone(&database), MediaEngine::discover().unwrap());
     let recovered = engine.recover_startup().unwrap();
     assert_eq!(recovered.len(), 1);
     assert_eq!(recovered[0].id, job.id);

@@ -1,6 +1,0 @@
-fn main() {
-    // The offline/testable bridge is exposed by cutroom_tauri::dispatch. The
-    // production desktop host wires that exact function into Tauri's command
-    // registry when the platform runtime dependency is present.
-    eprintln!("cutroom-tauri dispatch library ready");
-}

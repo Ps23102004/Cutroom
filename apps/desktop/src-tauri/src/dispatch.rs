@@ -448,9 +448,10 @@ fn dispatch_inner(
 }
 
 fn health(state: &AppState) -> Result<Value, DispatchError> {
-    let ffmpeg_available = MediaEngine::homebrew().is_ok();
-    let ffmpeg_version = if ffmpeg_available {
-        std::process::Command::new("/opt/homebrew/bin/ffmpeg")
+    let engine = MediaEngine::discover().ok();
+    let ffmpeg_available = engine.is_some();
+    let ffmpeg_version = engine.as_ref().and_then(|engine| {
+        std::process::Command::new(engine.ffmpeg_path())
             .arg("-version")
             .output()
             .ok()
@@ -468,9 +469,7 @@ fn health(state: &AppState) -> Result<Value, DispatchError> {
                             .to_owned()
                     })
             })
-    } else {
-        None
-    };
+    });
     Ok(json!({
         "tauriConnected": state.native_runtime,
         "ffmpegAvailable": ffmpeg_available,
@@ -1269,7 +1268,7 @@ fn canonical_request_hash(
 
 fn session_for(database: Database) -> Result<ProjectSession, DispatchError> {
     let database = Arc::new(Mutex::new(database));
-    let media = MediaEngine::homebrew().map_err(map_media_error)?;
+    let media = MediaEngine::discover().map_err(map_media_error)?;
     let jobs = JobEngine::new(Arc::clone(&database), media.clone());
     // Recovery precedes the worker so stale leases are durably reconciled before
     // any queued render can be claimed by this native host.

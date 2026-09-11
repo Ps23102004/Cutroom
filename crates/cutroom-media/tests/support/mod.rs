@@ -4,6 +4,7 @@ use std::{
     process::Command,
 };
 
+use cutroom_media::MediaEngine;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 
@@ -25,12 +26,19 @@ pub fn fixture_b() -> PathBuf {
     fixture("fixture_b.mp4")
 }
 
-pub fn ffmpeg() -> String {
-    std::env::var("CUTROOM_FFMPEG").unwrap_or_else(|_| "/opt/homebrew/bin/ffmpeg".into())
+fn test_engine() -> MediaEngine {
+    MediaEngine::discover()
+        .expect("ffmpeg/ffprobe must resolve for media tests (CUTROOM_FFMPEG / CUTROOM_FFPROBE / PATH)")
 }
 
-pub fn ffprobe() -> String {
-    std::env::var("CUTROOM_FFPROBE").unwrap_or_else(|_| "/opt/homebrew/bin/ffprobe".into())
+/// Absolute ffmpeg path, resolved exactly the way the library resolves it.
+pub fn ffmpeg() -> PathBuf {
+    test_engine().ffmpeg_path().to_path_buf()
+}
+
+/// Absolute ffprobe path, resolved exactly the way the library resolves it.
+pub fn ffprobe() -> PathBuf {
+    test_engine().ffprobe_path().to_path_buf()
 }
 
 pub fn sha256(path: &Path) -> String {

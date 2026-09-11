@@ -81,7 +81,7 @@ fn request(first: SourceRange, second: SourceRange, destination: PathBuf) -> Two
 }
 
 fn engine() -> MediaEngine {
-    MediaEngine::homebrew().unwrap()
+    MediaEngine::discover().unwrap()
 }
 
 fn token() -> CancellationToken {
