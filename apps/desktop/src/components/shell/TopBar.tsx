@@ -8,7 +8,7 @@ export const TopBar: React.FC = () => {
     currentRoute,
     navigate,
     activeProject,
-    setActiveProject,
+    closeProject,
     isNativeConnected,
     isFixtureMode,
     enableFixtureMode,
@@ -104,7 +104,7 @@ export const TopBar: React.FC = () => {
             </span>
             <Badge variant={activeProject.status}>{activeProject.status.replace('_', ' ')}</Badge>
             <button
-              onClick={() => setActiveProject(null)}
+              onClick={() => closeProject()}
               style={{
                 background: 'transparent',
                 border: 'none',

@@ -12,6 +12,19 @@ export interface RationalTimeBase {
   den: number;
 }
 
+export interface ProjectBrief {
+  goal: string;
+  audience: string;
+  targetDurationSeconds: number;
+  aspectRatio: '16:9' | '9:16' | '1:1';
+  requiredSegments: string;
+  excludedSegments: string;
+  tone: string;
+  style: string;
+  cta: string;
+  updatedAt: string;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -119,7 +132,6 @@ export interface RenderRequest {
   projectId: string;
   revisionId: string;
   preset: OutputPreset;
-  destinationPath: string;
 }
 
 export interface PreflightItem {
@@ -134,6 +146,84 @@ export interface SystemHealth {
   tauriConnected: boolean;
   ffmpegAvailable: boolean;
   ffmpegVersion?: string;
-  storageFreeBytes: number;
+  /** Null when the native host cannot obtain a truthful platform free-space reading. */
+  storageFreeBytes?: number;
   modelsInstalled: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Media Understanding Contracts (Transcripts, Silences, Moments)
+// ---------------------------------------------------------------------------
+
+export interface TranscriptWord {
+  word: string;
+  startTicks: string;
+  endTicks: string;
+  confidence?: number;
+}
+
+export interface TranscriptSegment {
+  id: string;
+  assetId: string;
+  speaker?: string;
+  text: string;
+  startTicks: string;
+  endTicks: string;
+  words?: TranscriptWord[];
+}
+
+export interface SilenceInterval {
+  assetId: string;
+  startTicks: string;
+  endTicks: string;
+  durationTicks: string;
+}
+
+export interface MediaMoment {
+  id: string;
+  assetId: string;
+  label: string;
+  category: 'hook' | 'demo' | 'interview' | 'cta' | 'b-roll' | 'quote';
+  startTicks: string;
+  endTicks: string;
+  summary: string;
+}
+
+export interface MediaUnderstandingMetadata {
+  assetId: string;
+  transcripts: TranscriptSegment[];
+  silences: SilenceInterval[];
+  moments: MediaMoment[];
+  updatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Client Review Contracts
+// ---------------------------------------------------------------------------
+
+export interface ClientReviewComment {
+  id: string;
+  revisionId: string;
+  author: string;
+  timelineTicks: string;
+  comment: string;
+  resolved: boolean;
+  createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Delivery / Archive Contracts
+// ---------------------------------------------------------------------------
+
+export interface DeliveryManifest {
+  projectId: string;
+  projectName: string;
+  revisionId: string;
+  contentHash: string;
+  renderJobId: string;
+  artifactPath: string;
+  artifactSha256: string;
+  exportedAt: string;
+  aspectRatio: string;
+  durationSeconds: number;
 }

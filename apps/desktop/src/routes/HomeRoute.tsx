@@ -8,7 +8,7 @@ export const HomeRoute: React.FC = () => {
   const {
     projects,
     activeProject,
-    setActiveProject,
+    openProject,
     navigate,
     createProject,
     enableFixtureMode,
@@ -19,7 +19,6 @@ export const HomeRoute: React.FC = () => {
 
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
-  const [newProjectPath, setNewProjectPath] = useState('/workspace/projects');
   const [newProjectAspectRatio, setNewProjectAspectRatio] = useState<'16:9' | '9:16' | '1:1'>('16:9');
   const [newProjectFps, setNewProjectFps] = useState('24');
   const [isCreating, setIsCreating] = useState(false);
@@ -27,22 +26,29 @@ export const HomeRoute: React.FC = () => {
 
   const failedJobs = jobs.filter((j) => j.status === 'failed');
 
+  const handleOpenProject = async (projectId: string) => {
+    try {
+      await openProject(projectId);
+      navigate('studio');
+    } catch (err) {
+      console.error('Failed to open project:', err);
+    }
+  };
+
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProjectName.trim()) return;
     setIsCreating(true);
     setCreateError(null);
     try {
-      const proj = await createProject({
+      await createProject({
         name: newProjectName.trim(),
-        path: `${newProjectPath.replace(/\/$/, '')}/${newProjectName.trim()}`,
         aspectRatio: newProjectAspectRatio,
         fpsNumerator: parseInt(newProjectFps, 10),
         fpsDenominator: 1,
       });
       setIsNewProjectModalOpen(false);
       setNewProjectName('');
-      setActiveProject(proj);
       navigate('studio');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -160,7 +166,7 @@ export const HomeRoute: React.FC = () => {
             <Button
               variant="primary"
               leftIcon={<PlayIcon size={16} />}
-              onClick={() => navigate('studio')}
+              onClick={() => void handleOpenProject(activeProject.id)}
             >
               Resume in Studio
             </Button>
@@ -224,10 +230,7 @@ export const HomeRoute: React.FC = () => {
                   color: 'inherit',
                   transition: 'border-color 150ms ease',
                 }}
-                onClick={() => {
-                  setActiveProject(proj);
-                  navigate('studio');
-                }}
+                onClick={() => void handleOpenProject(proj.id)}
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
                   <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
@@ -280,7 +283,7 @@ export const HomeRoute: React.FC = () => {
         isOpen={isNewProjectModalOpen}
         onClose={() => setIsNewProjectModalOpen(false)}
         title="Create New Project"
-        description="Initialize a project workspace with local storage directory and timeline settings."
+        description="Initialize a project workspace with timeline settings; the desktop native picker chooses its storage directory."
       >
         <form onSubmit={handleCreateProject} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {createError && (
@@ -305,22 +308,18 @@ export const HomeRoute: React.FC = () => {
             required
             autoFocus
           />
-          <Input
-            label="Storage Directory"
-            value={newProjectPath}
-            onChange={(e) => setNewProjectPath(e.target.value)}
-            hint="Local filesystem location where media and database will reside"
-            required
-          />
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+            The desktop native folder picker will choose and authorize the project storage directory. Browser preview reports native-unavailable.
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <Select
               label="Aspect Ratio"
               value={newProjectAspectRatio}
               onChange={(e) => setNewProjectAspectRatio(e.target.value as '16:9' | '9:16' | '1:1')}
               options={[
-                { value: '16:9', label: '16:9 Landscape (1080p)' },
-                { value: '9:16', label: '9:16 Vertical (Shorts/Reels)' },
-                { value: '1:1', label: '1:1 Square' },
+                { value: '16:9', label: '16:9 Landscape (4K UHD / 1080p)' },
+                { value: '9:16', label: '9:16 Vertical (4K Reel / Shorts)' },
+                { value: '1:1', label: '1:1 Square (Social Master)' },
               ]}
             />
             <Select

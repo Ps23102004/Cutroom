@@ -1,0 +1,29 @@
+[package]
+name = "cutroom-tauri"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+name = "cutroom_tauri"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cutroom-tauri"
+path = "src/main.rs"
+
+[features]
+default = []
+# The CI/offline bridge compiles without a platform Tauri runtime. A host build
+# can attach this library's `dispatch` function to Tauri's command registry.
+tauri-runtime = []
+
+[dependencies]
+cutroom-core = { path = "../../../crates/cutroom-core" }
+cutroom-jobs = { path = "../../../crates/cutroom-jobs" }
+cutroom-media = { path = "../../../crates/cutroom-media" }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+thiserror = "2.0.20"
+uuid = { version = "1.26.0", features = ["v4", "serde"] }

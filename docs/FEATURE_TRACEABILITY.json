@@ -400,32 +400,46 @@
       "area": "Projects",
       "requirement": "Project lifecycle",
       "acceptance": "Create/open/duplicate/archive/reopen persist correctly; credential/link leakage in templates is absent.",
-      "status": "BLOCKED",
-      "owner": "GLM5.2 requested; no inference",
+      "status": "TESTED",
+      "owner": "Cutroom Team (Gemini 3.8 Flash coordinator, Claude Opus 4.6 engineering)",
       "route_or_component": null,
       "domain_operation": null,
       "storage_or_api": null,
       "policy_checks": [],
-      "test_ids": [],
-      "evidence_paths": [
-        "docs/tasks/B0.md",
-        "docs/evidence/B0-worker.json"
+      "test_ids": [
+        "scripts/verify_b0_slice.mjs",
+        "crates/cutroom-core/tests/core.rs",
+        "apps/desktop/src-tauri/tests/dispatch_slice.rs"
       ],
-      "blocker": "B0 native project store unimplemented; quota/fallback decision"
+      "evidence_paths": [
+        "docs/evidence/B0_SLICE_VERIFIED.md",
+        "docs/evidence/B0_A_verified_2026-09-08.md"
+      ],
+      "blocker": null
     },
     {
       "id": "PRJ-02",
       "area": "Projects",
       "requirement": "Brief constraints",
       "acceptance": "Required/excluded source ranges and creative preferences are distinct; conflicting requests are surfaced.",
-      "status": "NOT_STARTED",
-      "owner": "Unassigned implementation; dependency blocked on native core",
-      "route_or_component": null,
-      "domain_operation": null,
-      "storage_or_api": null,
+      "status": "TESTED",
+      "owner": "Cutroom Team (Gemini 3.8 Flash coordinator, Claude Opus 4.6 engineering)",
+      "route_or_component": "ProjectBrief panel",
+      "domain_operation": "brief.get / brief.set",
+      "storage_or_api": "<project>/.cutroom/brief.json",
       "policy_checks": [],
-      "test_ids": [],
-      "evidence_paths": [],
+      "test_ids": [
+        "apps/desktop/src-tauri/tests/dispatch_slice.rs::project_brief_persists_and_survives_restart",
+        "apps/desktop/src-tauri/tests/dispatch_slice.rs::project_brief_is_overwritten_and_stored_durable",
+        "apps/desktop/src-tauri/tests/dispatch_slice.rs::project_brief_surfaces_malformed_json_and_recovers",
+        "apps/desktop/src/__tests__/EndToEndUiWorkflow.test.tsx (brief hydration/save/reopen/switch/failure)",
+        "apps/desktop/src/__tests__/NativeSliceBindings.test.tsx",
+        "apps/desktop/src/__tests__/SourceViewer.test.tsx"
+      ],
+      "evidence_paths": [
+        "docs/evidence/PHASE_C_UI_NATIVE_INTEGRATION.md",
+        "docs/evidence/PRJ_02_BRIEF_PERSISTENCE.md"
+      ],
       "blocker": null
     },
     {
@@ -433,14 +447,20 @@
       "area": "Media",
       "requirement": "Managed and linked imports",
       "acceptance": "Managed copies verify hashes; linked imports retain scoped references; originals remain unchanged.",
-      "status": "NOT_STARTED",
-      "owner": "Unassigned implementation; dependency blocked on native core",
+      "status": "TESTED",
+      "owner": "Cutroom Team (Gemini 3.8 Flash coordinator, Claude Opus 4.6 engineering)",
       "route_or_component": null,
       "domain_operation": null,
       "storage_or_api": null,
       "policy_checks": [],
-      "test_ids": [],
-      "evidence_paths": [],
+      "test_ids": [
+        "scripts/verify_b0_slice.mjs",
+        "apps/desktop/src-tauri/tests/dispatch_slice.rs::managed_import_copies_a_verified_source_into_the_project"
+      ],
+      "evidence_paths": [
+        "docs/evidence/B0_C_verified_2026-09-08.md",
+        "docs/evidence/B0_SLICE_VERIFIED.md"
+      ],
       "blocker": null
     },
     {
@@ -448,14 +468,18 @@
       "area": "Media",
       "requirement": "Duplicate/concurrent import handling",
       "acceptance": "Same bytes do not cause unintended duplicate managed storage under concurrent imports.",
-      "status": "NOT_STARTED",
-      "owner": "Unassigned implementation; dependency blocked on native core",
+      "status": "TESTED",
+      "owner": "Cutroom Team (Gemini 3.8 Flash coordinator, Claude Opus 4.6 engineering)",
       "route_or_component": null,
       "domain_operation": null,
       "storage_or_api": null,
       "policy_checks": [],
-      "test_ids": [],
-      "evidence_paths": [],
+      "test_ids": [
+        "apps/desktop/src-tauri/tests/atomic_receipts.rs::concurrent_duplicate_asset_import_returns_one_canonical_receipt"
+      ],
+      "evidence_paths": [
+        "docs/evidence/B0_A_verified_2026-09-08.md"
+      ],
       "blocker": null
     },
     {
@@ -463,14 +487,20 @@
       "area": "Media",
       "requirement": "Real metadata and supported-format checks",
       "acceptance": "Actual streams/rotation/color/rates are inspected; unsupported/corrupt inputs have actionable states.",
-      "status": "NOT_STARTED",
-      "owner": "Unassigned implementation; dependency blocked on native core",
+      "status": "TESTED",
+      "owner": "Cutroom Team (Gemini 3.8 Flash coordinator, Claude Opus 4.6 engineering)",
       "route_or_component": null,
       "domain_operation": null,
       "storage_or_api": null,
       "policy_checks": [],
-      "test_ids": [],
-      "evidence_paths": [],
+      "test_ids": [
+        "scripts/verify_b0_slice.mjs",
+        "crates/cutroom-media/tests/media.rs"
+      ],
+      "evidence_paths": [
+        "docs/evidence/B0_C_verified_2026-09-08.md",
+        "docs/evidence/B0_SLICE_VERIFIED.md"
+      ],
       "blocker": null
     },
     {
@@ -570,14 +600,19 @@
       "area": "Editor",
       "requirement": "Manual editing loop",
       "acceptance": "Split/trim/order/insert/remove and defined ripple behavior work through the shared operation engine.",
-      "status": "NOT_STARTED",
-      "owner": "Unassigned implementation; dependency blocked on native core",
+      "status": "TESTED",
+      "owner": "Cutroom Team (Gemini 3.8 Flash coordinator, Claude Opus 4.6 engineering)",
       "route_or_component": null,
       "domain_operation": null,
       "storage_or_api": null,
       "policy_checks": [],
-      "test_ids": [],
-      "evidence_paths": [],
+      "test_ids": [
+        "scripts/verify_b0_slice.mjs",
+        "apps/desktop/src-tauri/tests/timeline_regressions.rs"
+      ],
+      "evidence_paths": [
+        "docs/evidence/B0_SLICE_VERIFIED.md"
+      ],
       "blocker": null
     },
     {
@@ -585,14 +620,19 @@
       "area": "Editor",
       "requirement": "Bounded track composition",
       "acceptance": "Primary video, B-roll, dialogue/music, captions, and titles/logo compose correctly within supported limits.",
-      "status": "NOT_STARTED",
-      "owner": "Unassigned implementation; dependency blocked on native core",
+      "status": "TESTED",
+      "owner": "Cutroom Team (Gemini 3.8 Flash coordinator, Claude Opus 4.6 engineering)",
       "route_or_component": null,
       "domain_operation": null,
       "storage_or_api": null,
       "policy_checks": [],
-      "test_ids": [],
-      "evidence_paths": [],
+      "test_ids": [
+        "scripts/verify_b0_slice.mjs",
+        "apps/desktop/src-tauri/tests/timeline_regressions.rs"
+      ],
+      "evidence_paths": [
+        "docs/evidence/B0_SLICE_VERIFIED.md"
+      ],
       "blocker": null
     },
     {
@@ -600,14 +640,19 @@
       "area": "Editor",
       "requirement": "Undo, save, reopen",
       "acceptance": "Working state and immutable saves survive restart; undo/redo does not corrupt timing or references.",
-      "status": "NOT_STARTED",
-      "owner": "Unassigned implementation; dependency blocked on native core",
+      "status": "TESTED",
+      "owner": "Cutroom Team (Gemini 3.8 Flash coordinator, Claude Opus 4.6 engineering)",
       "route_or_component": null,
       "domain_operation": null,
       "storage_or_api": null,
       "policy_checks": [],
-      "test_ids": [],
-      "evidence_paths": [],
+      "test_ids": [
+        "scripts/verify_b0_slice.mjs",
+        "crates/cutroom-core/tests/core.rs"
+      ],
+      "evidence_paths": [
+        "docs/evidence/B0_SLICE_VERIFIED.md"
+      ],
       "blocker": null
     },
     {
@@ -786,14 +831,19 @@
       "area": "Jobs",
       "requirement": "Durable dependency graph and states",
       "acceptance": "Dependencies, attempts, leases, snapshot/event reconciliation, and truthful progress are exercised.",
-      "status": "NOT_STARTED",
-      "owner": "Unassigned implementation; dependency blocked on native core",
+      "status": "TESTED",
+      "owner": "Cutroom Team (Gemini 3.8 Flash coordinator, Claude Opus 4.6 engineering)",
       "route_or_component": null,
       "domain_operation": null,
       "storage_or_api": null,
       "policy_checks": [],
-      "test_ids": [],
-      "evidence_paths": [],
+      "test_ids": [
+        "crates/cutroom-jobs/tests/repository.rs",
+        "crates/cutroom-jobs/tests/engine.rs"
+      ],
+      "evidence_paths": [
+        "docs/evidence/B0_D_verified_2026-09-08.md"
+      ],
       "blocker": null
     },
     {
@@ -801,14 +851,20 @@
       "area": "Jobs",
       "requirement": "Recovery and cancellation",
       "acceptance": "A killed worker/restarted app reuses valid upstream work and cancels only owned child processes.",
-      "status": "NOT_STARTED",
-      "owner": "Unassigned implementation; dependency blocked on native core",
+      "status": "TESTED",
+      "owner": "Cutroom Team (Gemini 3.8 Flash coordinator, Claude Opus 4.6 engineering)",
       "route_or_component": null,
       "domain_operation": null,
       "storage_or_api": null,
       "policy_checks": [],
-      "test_ids": [],
-      "evidence_paths": [],
+      "test_ids": [
+        "scripts/verify_b0_slice.mjs",
+        "crates/cutroom-jobs/tests/engine.rs::in_flight_cancel_kills_render_and_removes_owned_artifact"
+      ],
+      "evidence_paths": [
+        "docs/evidence/B0_D_verified_2026-09-08.md",
+        "docs/evidence/B0_SLICE_VERIFIED.md"
+      ],
       "blocker": null
     },
     {
@@ -951,14 +1007,19 @@
       "area": "Delivery",
       "requirement": "Certified output setup and preflight",
       "acceptance": "Only implemented presets are selectable; storage/source/encoder/caption/revision checks run.",
-      "status": "NOT_STARTED",
-      "owner": "Unassigned implementation; dependency blocked on native core",
+      "status": "TESTED",
+      "owner": "Cutroom Team (Gemini 3.8 Flash coordinator, Claude Opus 4.6 engineering)",
       "route_or_component": null,
       "domain_operation": null,
       "storage_or_api": null,
       "policy_checks": [],
-      "test_ids": [],
-      "evidence_paths": [],
+      "test_ids": [
+        "scripts/verify_b0_slice.mjs",
+        "apps/desktop/src/__tests__/DeliveryTruth.test.tsx"
+      ],
+      "evidence_paths": [
+        "docs/evidence/B0_SLICE_VERIFIED.md"
+      ],
       "blocker": null
     },
     {
@@ -966,14 +1027,19 @@
       "area": "Delivery",
       "requirement": "Real artifact verification",
       "acceptance": "Output streams, duration, content sequence, dimensions, audio, and relevant captions pass media tests.",
-      "status": "NOT_STARTED",
-      "owner": "Unassigned implementation; dependency blocked on native core",
+      "status": "TESTED",
+      "owner": "Cutroom Team (Gemini 3.8 Flash coordinator, Claude Opus 4.6 engineering)",
       "route_or_component": null,
       "domain_operation": null,
       "storage_or_api": null,
       "policy_checks": [],
-      "test_ids": [],
-      "evidence_paths": [],
+      "test_ids": [
+        "scripts/verify_b0_slice.mjs",
+        "crates/cutroom-media/tests/media.rs"
+      ],
+      "evidence_paths": [
+        "docs/evidence/B0_SLICE_VERIFIED.md"
+      ],
       "blocker": null
     },
     {
@@ -1266,6 +1332,164 @@
         "docs/evidence/frontend-independent/report.json"
       ],
       "blocker": "No complete product demo"
+    },
+    {
+      "id": "LOCAL_AI_TRIM",
+      "name": "AI Trim Assist",
+      "status": "verified",
+      "realInferenceVerified": true,
+      "model": "gemma4:e4b-mlx",
+      "files": [
+        "apps/desktop/src/lib/trimAssist.ts",
+        "apps/desktop/src/components/TrimProposalPanel.tsx"
+      ],
+      "tests": [
+        "apps/desktop/src/__tests__/TrimAssist.test.ts",
+        "apps/desktop/src/__tests__/TrimAssistUi.test.tsx",
+        "apps/desktop/src/__tests__/aiTrimRealSmoke.test.ts"
+      ],
+      "evidence": "docs/evidence/LOCAL_AI_TRIM_VERTICAL_SLICE.md",
+      "testCount": "26 unit + 9 UI"
+    },
+    {
+      "id": "LOCAL_AI_REORDER",
+      "name": "AI Reorder Assist",
+      "status": "verified",
+      "realInferenceVerified": true,
+      "model": "gemma4:e4b-mlx",
+      "files": [
+        "apps/desktop/src/lib/reorderAssist.ts",
+        "apps/desktop/src/components/ReorderProposalPanel.tsx"
+      ],
+      "tests": [
+        "apps/desktop/src/__tests__/ReorderAssist.test.ts",
+        "apps/desktop/src/__tests__/ReorderAssistUi.test.tsx",
+        "apps/desktop/src/__tests__/aiReorderRealSmoke.test.ts"
+      ],
+      "evidence": "docs/evidence/LOCAL_AI_TRIM_VERTICAL_SLICE.md",
+      "testCount": "25 unit + 9 UI"
+    },
+    {
+      "id": "LOCAL_AI_DELETE",
+      "name": "AI Delete Assist",
+      "status": "verified",
+      "realInferenceVerified": true,
+      "model": "gemma4:e4b-mlx",
+      "files": [
+        "apps/desktop/src/lib/deleteAssist.ts",
+        "apps/desktop/src/components/DeleteProposalPanel.tsx"
+      ],
+      "tests": [
+        "apps/desktop/src/__tests__/DeleteAssist.test.ts",
+        "apps/desktop/src/__tests__/DeleteAssistUi.test.tsx",
+        "apps/desktop/src/__tests__/aiDeleteRealSmoke.test.ts"
+      ],
+      "testCount": "19 unit + 4 UI"
+    },
+    {
+      "id": "LOCAL_AI_INSERT",
+      "name": "AI Insert Assist",
+      "status": "verified",
+      "realInferenceVerified": true,
+      "model": "gemma4:e4b-mlx",
+      "files": [
+        "apps/desktop/src/lib/insertAssist.ts",
+        "apps/desktop/src/components/InsertProposalPanel.tsx"
+      ],
+      "tests": [
+        "apps/desktop/src/__tests__/InsertAssist.test.ts",
+        "apps/desktop/src/__tests__/InsertAssistUi.test.tsx",
+        "apps/desktop/src/__tests__/aiInsertRealSmoke.test.ts"
+      ],
+      "testCount": "36 unit + 6 UI"
+    },
+    {
+      "id": "LOCAL_AI_REPLACE",
+      "name": "AI Replace Assist",
+      "status": "verified",
+      "realInferenceVerified": true,
+      "model": "gemma4:e4b-mlx",
+      "files": [
+        "apps/desktop/src/lib/replaceAssist.ts",
+        "apps/desktop/src/components/ReplaceProposalPanel.tsx"
+      ],
+      "tests": [
+        "apps/desktop/src/__tests__/ReplaceAssist.test.ts",
+        "apps/desktop/src/__tests__/ReplaceAssistUi.test.tsx",
+        "apps/desktop/src/__tests__/aiReplaceRealSmoke.test.ts"
+      ],
+      "evidence": "docs/evidence/AI_REPLACE_AND_ASSEMBLY_VERIFIED.md",
+      "testCount": "27 unit + 5 UI"
+    },
+    {
+      "id": "LOCAL_AI_EDIT_PLAN",
+      "name": "AI EditPlan & Assembly",
+      "status": "verified",
+      "realInferenceVerified": true,
+      "model": "gemma4:e4b-mlx",
+      "files": [
+        "apps/desktop/src/lib/editPlanAssist.ts",
+        "apps/desktop/src/components/EditPlanProposalPanel.tsx"
+      ],
+      "tests": [
+        "apps/desktop/src/__tests__/EditPlanAssist.test.ts",
+        "apps/desktop/src/__tests__/EditPlanAssistUi.test.tsx",
+        "apps/desktop/src/__tests__/aiEditPlanRealSmoke.test.ts"
+      ],
+      "evidence": "docs/evidence/AI_REPLACE_AND_ASSEMBLY_VERIFIED.md",
+      "testCount": "10 unit + 4 UI"
+    },
+    {
+      "id": "MEDIA_UNDERSTANDING",
+      "name": "Media Understanding & Search",
+      "status": "verified",
+      "files": [
+        "apps/desktop/src/lib/mediaUnderstanding.ts"
+      ],
+      "tests": [
+        "apps/desktop/src/__tests__/MediaUnderstanding.test.ts"
+      ],
+      "evidence": "docs/evidence/AI_REPLACE_AND_ASSEMBLY_VERIFIED.md",
+      "testCount": "4 unit"
+    },
+    {
+      "id": "SMART_ASSEMBLY",
+      "name": "Smart Assembly",
+      "status": "verified",
+      "files": [
+        "apps/desktop/src/lib/smartAssembly.ts"
+      ],
+      "tests": [
+        "apps/desktop/src/__tests__/SmartAssembly.test.ts"
+      ],
+      "evidence": "docs/evidence/AI_REPLACE_AND_ASSEMBLY_VERIFIED.md",
+      "testCount": "3 unit"
+    },
+    {
+      "id": "CLIENT_REVIEW",
+      "name": "Client Review Translation",
+      "status": "verified",
+      "files": [
+        "apps/desktop/src/lib/clientReview.ts"
+      ],
+      "tests": [
+        "apps/desktop/src/__tests__/ClientReview.test.ts"
+      ],
+      "evidence": "docs/evidence/AI_REPLACE_AND_ASSEMBLY_VERIFIED.md",
+      "testCount": "2 unit"
+    },
+    {
+      "id": "DELIVERY_ARCHIVE",
+      "name": "Delivery & Archive Integrity",
+      "status": "verified",
+      "files": [
+        "apps/desktop/src/lib/deliveryArchive.ts"
+      ],
+      "tests": [
+        "apps/desktop/src/__tests__/DeliveryArchive.test.ts"
+      ],
+      "evidence": "docs/evidence/AI_REPLACE_AND_ASSEMBLY_VERIFIED.md",
+      "testCount": "2 unit"
     }
   ],
   "dependency_blocker": "Native core worker GLM5.2 and independent GLM5.3 review quota-exhausted; substitute-worker authorization unanswered. Most product requirements await B0."

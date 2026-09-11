@@ -1,20 +1,140 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import { Button, Card, Tabs, Input, Select, Badge } from '@cutroom/ui';
+import { assistBrief, briefAssistAvailable, type BriefProposal } from '../lib/briefAssist';
 
 type BriefsSubview = 'editor' | 'plan' | 'sources' | 'recipes';
 
 export const AIBriefsRoute: React.FC = () => {
-  const { activeProject, navigate } = useApp();
+  const { activeProject, brief, saveBrief, navigate } = useApp();
   const [activeSubview, setActiveSubview] = useState<BriefsSubview>('editor');
 
-  // Form states
-  const [goal, setGoal] = useState('Create an engaging 60-second summary from the keynote interview');
-  const [audience, setAudience] = useState('Product engineering leaders and developers');
-  const [targetDuration, setTargetDuration] = useState('60');
-  const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16'>('16:9');
-  const [requiredSegments, setRequiredSegments] = useState('Key announcement at 00:02:14; closing question at 00:04:30');
-  const [excludedSegments, setExcludedSegments] = useState('Confidential roadmap slides between 00:01:10 and 00:01:45');
+  // Form states initialized from authoritative brief
+  const [goal, setGoal] = useState(brief?.goal || '');
+  const [audience, setAudience] = useState(brief?.audience || '');
+  const [targetDuration, setTargetDuration] = useState(String(brief?.targetDurationSeconds || 60));
+  const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16' | '1:1'>(brief?.aspectRatio || activeProject?.aspectRatio || '16:9');
+  const [requiredSegments, setRequiredSegments] = useState(brief?.requiredSegments || '');
+  const [excludedSegments, setExcludedSegments] = useState(brief?.excludedSegments || '');
+  const [tone, setTone] = useState(brief?.tone || 'Direct, informative');
+  const [style, setStyle] = useState(brief?.style || 'Fast-paced, modern');
+  const [cta, setCta] = useState(brief?.cta || '');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // AI Brief Assist state
+  const [aiInstruction, setAiInstruction] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+  const [aiProposal, setAiProposal] = useState<BriefProposal | null>(null);
+  const [aiAvailable, setAiAvailable] = useState<boolean | null>(null);
+
+  // Check AI availability on mount
+  useEffect(() => {
+    briefAssistAvailable().then((r) => setAiAvailable(r.available));
+  }, []);
+
+  const handleAiAssist = useCallback(async () => {
+    if (!activeProject || !aiInstruction.trim()) return;
+    setAiLoading(true);
+    setAiError(null);
+    setAiProposal(null);
+
+    const result = await assistBrief({
+      instruction: aiInstruction,
+      project: {
+        name: activeProject.name,
+        aspectRatio: activeProject.aspectRatio,
+        fpsNumerator: activeProject.fpsNumerator,
+        fpsDenominator: activeProject.fpsDenominator,
+      },
+      currentBrief: brief,
+    });
+
+    setAiLoading(false);
+
+    if (result.ok) {
+      setAiProposal(result.proposal);
+    } else {
+      setAiError(result.error);
+    }
+  }, [activeProject, aiInstruction, brief]);
+
+  const handleAcceptProposal = useCallback(async () => {
+    if (!aiProposal) return;
+    // Apply proposal to form fields
+    setGoal(aiProposal.goal);
+    setAudience(aiProposal.audience);
+    setTargetDuration(String(aiProposal.targetDurationSeconds));
+    setAspectRatio(aiProposal.aspectRatio);
+    setRequiredSegments(aiProposal.requiredSegments);
+    setExcludedSegments(aiProposal.excludedSegments);
+    setTone(aiProposal.tone);
+    setStyle(aiProposal.style);
+    setCta(aiProposal.cta);
+
+    // Persist immediately
+    setIsSaving(true);
+    try {
+      await saveBrief(aiProposal);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+      setAiProposal(null);
+      setAiInstruction('');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setSaveError(`Failed to save AI proposal: ${msg}`);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [aiProposal, saveBrief]);
+
+  const handleDismissProposal = useCallback(() => {
+    setAiProposal(null);
+  }, []);
+
+  // Sync with loaded brief when it changes
+  React.useEffect(() => {
+    if (brief) {
+      setGoal(brief.goal);
+      setAudience(brief.audience);
+      setTargetDuration(String(brief.targetDurationSeconds));
+      setAspectRatio(brief.aspectRatio);
+      setRequiredSegments(brief.requiredSegments);
+      setExcludedSegments(brief.excludedSegments);
+      setTone(brief.tone);
+      setStyle(brief.style);
+      setCta(brief.cta);
+    }
+  }, [brief]);
+
+  const handleSaveBrief = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
+    try {
+      await saveBrief({
+        goal,
+        audience,
+        targetDurationSeconds: parseInt(targetDuration, 10) || 60,
+        aspectRatio,
+        requiredSegments,
+        excludedSegments,
+        tone,
+        style,
+        cta,
+      });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setSaveError(`Failed to save brief: ${msg}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   if (!activeProject) {
     return (
@@ -60,6 +180,94 @@ export const AIBriefsRoute: React.FC = () => {
           <h3 style={{ margin: '0 0 16px', fontSize: '16px', color: 'var(--text-primary, #F3F0F6)' }}>
             Intent & Boundary Constraints
           </h3>
+
+          {/* AI Brief Assist */}
+          <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: 'var(--bg-app, #19161F)', borderRadius: '10px', border: '1px solid var(--border-subtle, #362F40)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+                AI Brief Assist
+              </span>
+              {aiAvailable === true && (
+                <Badge variant="approved">Local AI Ready</Badge>
+              )}
+              {aiAvailable === false && (
+                <Badge variant="destructive">Local AI Unavailable</Badge>
+              )}
+              {aiAvailable === null && (
+                <Badge variant="neutral">Checking…</Badge>
+              )}
+            </div>
+            <p style={{ margin: '0 0 10px', fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+              Describe what you want in plain language. The local AI will propose brief changes for your review.
+            </p>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="text"
+                value={aiInstruction}
+                onChange={(e) => setAiInstruction(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && !aiLoading) void handleAiAssist(); }}
+                placeholder="e.g. Make this a fast 45-second product launch for developers"
+                disabled={aiAvailable !== true || aiLoading}
+                style={{
+                  flex: 1,
+                  padding: '8px 12px',
+                  fontSize: '13px',
+                  backgroundColor: 'var(--bg-raised, #2B2533)',
+                  color: 'var(--text-primary, #F3F0F6)',
+                  border: '1px solid var(--border-subtle, #362F40)',
+                  borderRadius: '6px',
+                  outline: 'none',
+                }}
+              />
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => void handleAiAssist()}
+                isLoading={aiLoading}
+                disabled={aiAvailable !== true || !aiInstruction.trim()}
+              >
+                Assist
+              </Button>
+            </div>
+            {aiError && (
+              <div role="alert" style={{ marginTop: '8px', fontSize: '12px', color: 'var(--destructive, #E06C75)' }}>
+                {aiError}
+              </div>
+            )}
+          </div>
+
+          {/* AI Proposal Preview */}
+          {aiProposal && (
+            <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: 'var(--bg-raised, #2B2533)', borderRadius: '10px', border: '2px solid var(--accent-violet, #7C3AED)' }}>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)', marginBottom: '12px' }}>
+                AI Proposal — Review Before Accepting
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+                <div><strong>Goal:</strong> {aiProposal.goal}</div>
+                <div><strong>Audience:</strong> {aiProposal.audience}</div>
+                <div><strong>Duration:</strong> {aiProposal.targetDurationSeconds}s</div>
+                <div><strong>Aspect:</strong> {aiProposal.aspectRatio}</div>
+                <div><strong>Tone:</strong> {aiProposal.tone}</div>
+                <div><strong>Style:</strong> {aiProposal.style}</div>
+                <div style={{ gridColumn: '1 / -1' }}><strong>CTA:</strong> {aiProposal.cta || '(none)'}</div>
+                {aiProposal.requiredSegments && (
+                  <div style={{ gridColumn: '1 / -1' }}><strong>Required:</strong> {aiProposal.requiredSegments}</div>
+                )}
+                {aiProposal.excludedSegments && (
+                  <div style={{ gridColumn: '1 / -1' }}><strong>Excluded:</strong> {aiProposal.excludedSegments}</div>
+                )}
+              </div>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '12px', justifyContent: 'flex-end' }}>
+                <Button size="sm" variant="secondary" onClick={handleDismissProposal}>
+                  Dismiss
+                </Button>
+                <Button size="sm" variant="primary" onClick={() => void handleAcceptProposal()}>
+                  Accept & Save
+                </Button>
+              </div>
+            </div>
+          )}
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <Input
               label="Editorial Goal / Objective"
@@ -89,6 +297,26 @@ export const AIBriefsRoute: React.FC = () => {
                 { value: '9:16', label: '9:16 Vertical (TikTok/Shorts/Reels)' },
               ]}
             />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <Input
+                label="Tone"
+                value={tone}
+                onChange={(e) => setTone(e.target.value)}
+                hint="e.g. Direct, conversational, energetic"
+              />
+              <Input
+                label="Style"
+                value={style}
+                onChange={(e) => setStyle(e.target.value)}
+                hint="e.g. Fast-paced, cinematic, documentary"
+              />
+            </div>
+            <Input
+              label="Call to Action (CTA)"
+              value={cta}
+              onChange={(e) => setCta(e.target.value)}
+              hint="Closing viewer action or destination URL"
+            />
             <Input
               label="Required Source Moments"
               value={requiredSegments}
@@ -101,7 +329,20 @@ export const AIBriefsRoute: React.FC = () => {
               onChange={(e) => setExcludedSegments(e.target.value)}
               hint="Segments strictly barred from appearing in generated proposals."
             />
+            {saveError && (
+              <div role="alert" style={{ color: 'var(--destructive, #E06C75)', fontSize: '13px' }}>
+                {saveError}
+              </div>
+            )}
+            {saveSuccess && (
+              <div style={{ color: 'var(--accent-green, #98C379)', fontSize: '13px' }}>
+                ✓ Brief constraints saved to project.
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
+              <Button variant="primary" onClick={() => void handleSaveBrief()} isLoading={isSaving}>
+                Save Brief Constraints
+              </Button>
               <Button variant="secondary" onClick={() => setActiveSubview('plan')}>
                 Draft Execution Plan
               </Button>
@@ -124,7 +365,9 @@ export const AIBriefsRoute: React.FC = () => {
             <div style={{ padding: '12px', backgroundColor: 'var(--bg-app, #19161F)', borderRadius: '8px', fontSize: '13px' }}>
               <div style={{ fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>Model & Tooling Identity</div>
               <div style={{ color: 'var(--text-secondary, #BAB3C5)', marginTop: '4px' }}>
-                AI Runtime Model: None active. Available when the desktop media engine is connected. Local inference bounded to permitted schemas.
+                {aiAvailable === true
+                  ? 'AI Runtime Model: gemma4:e2b-mlx (local Ollama). Inference bounded to permitted schemas.'
+                  : 'AI Runtime Model: None active. Start Ollama with gemma4:e2b-mlx to enable local inference.'}
               </div>
             </div>
 

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Cutroom",
+  "version": "0.1.0",
+  "identifier": "com.cutroom.desktop",
+  "app": {
+    "windows": [{
+      "title": "Cutroom",
+      "width": 1440,
+      "height": 900,
+      "minWidth": 1440,
+      "minHeight": 900,
+      "backgroundColor": "#19161F"
+    }]
+  }
+}

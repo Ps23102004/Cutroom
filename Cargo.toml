@@ -1,0 +1,8 @@
+[workspace]
+members = ["crates/cutroom-core", "crates/cutroom-media", "crates/cutroom-jobs", "apps/desktop/src-tauri"]
+resolver = "2"
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.96"
+license = "UNLICENSED"

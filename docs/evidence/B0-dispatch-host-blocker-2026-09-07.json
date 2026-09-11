@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "kind": "host_dispatch_blocker_not_worker_execution",
+  "date": "2026-09-07",
+  "timestamp_precision": "date_only; exact command times unavailable",
+  "record_id": "B0-host-auto-classifier-block-01",
+  "host_session": "cutroom-build-plan [8075f2]",
+  "repository": "/Users/parthsingh/Developer/Cutroom",
+  "head_read_from_git_files": "22cde4748e799eb3580834cbbdcbadcda0ecd045",
+  "branch_read_from_git_head": "main",
+  "working_tree_status": "not verified; git command blocked",
+  "worktrees": "not verified; git command blocked",
+  "coordinator": {
+    "task_id": "B0_COORDINATOR_DISPATCH",
+    "packet": "docs/tasks/B0_COORDINATOR_DISPATCH.md",
+    "packet_version": "existing unversioned Markdown; status annotation only",
+    "requested_model": "Gemini 3.8 Flash through AGY",
+    "resolved_model": null,
+    "invocation_id": null,
+    "worker_started_at": null,
+    "status": "BLOCKED",
+    "launched": false,
+    "stage": "installed CLI-help prerequisite blocked before an inference invocation could be constructed",
+    "worker_changed_files": [],
+    "worker_checks_executed": []
+  },
+  "prepared_tasks_not_dispatched": ["B0-A", "B0-B", "B0-C", "B0-D", "B0-E"],
+  "observations": [
+    {
+      "tool": "ListAgents",
+      "result": "No reachable agents; no other Claude session reported running on this machine",
+      "limit": "Does not inventory external AGY sessions, OS processes, or local-model clients"
+    },
+    {
+      "tool": "Bash",
+      "command": "git -C /Users/parthsingh/Developer/Cutroom status --short --branch; git -C /Users/parthsingh/Developer/Cutroom rev-parse HEAD; git -C /Users/parthsingh/Developer/Cutroom worktree list --porcelain",
+      "executed": false,
+      "exit_code": null,
+      "error": "claude-opus-5 is temporarily unavailable, so auto mode cannot determine the safety of Bash right now"
+    },
+    {
+      "tool": "Bash",
+      "command": "/Users/parthsingh/.local/bin/agy --help",
+      "executed": false,
+      "exit_code": null,
+      "error": "claude-opus-5 is temporarily unavailable, so auto mode cannot determine the safety of Bash right now"
+    },
+    {
+      "tool": "Workflow",
+      "workflow_name": "cutroom-dispatch-blocker-check",
+      "intended_scope": "dedicated read/search tools only; no blocked commands or execution relay",
+      "requested_reader_model": "sonnet",
+      "resolved_reader_model": null,
+      "run_id": null,
+      "executed": false,
+      "error": "claude-opus-5 is temporarily unavailable, so auto mode cannot determine the safety of Workflow right now"
+    }
+  ],
+  "failure_classification": "host permission-classifier service unavailable; not an observed AGY/GLM/Qwen quota or auth response",
+  "independent_verification": "not run; agent/workflow execution blocked",
+  "application_tests_executed": [],
+  "application_source_files_changed_by_retry": [],
+  "running_work_claim": "No worker launched by this retry; external process inventory unavailable",
+  "permission_changes": "none",
+  "resume_gate": "Restore the host classifier or have the user choose normal interactive permission approval. Then inspect current work/processes, verify installed AGY CLI options, and invoke the existing coordinator packet. Do not reset Git, recreate the plan, or bypass permissions."
+}

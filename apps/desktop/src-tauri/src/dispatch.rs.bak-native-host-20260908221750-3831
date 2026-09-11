@@ -1,0 +1,1082 @@
+use std::{
+    collections::HashMap,
+    fs,
+    path::Path,
+    sync::{Arc, Mutex},
+};
+
+use cutroom_core::{
+    Asset, AssetInput, Clip, ClipInput, Composition, CompositionMutation, CoreError, Database,
+    JobEnqueue, JobRecord, Project, ProjectInput, RationalTime, RationalTimeBase, Revision,
+    TimelineOperation, Track, TrackInput,
+};
+use cutroom_jobs::JobEngine;
+use cutroom_media::{CancellationToken, MediaEngine};
+use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
+use uuid::Uuid;
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct NativeRequest {
+    pub command: String,
+    #[serde(default)]
+    pub operation_id: Option<String>,
+    #[serde(default)]
+    pub project_id: Option<String>,
+    #[serde(default)]
+    pub expected_version: Option<i64>,
+    #[serde(default)]
+    pub payload: Value,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct NativeErrorPayload {
+    pub code: String,
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub details: Option<Value>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum NativeResponse {
+    Ok { ok: bool, data: Value },
+    Err { ok: bool, error: NativeErrorPayload },
+}
+
+impl NativeResponse {
+    fn success<T: Serialize>(data: T) -> Self {
+        match serde_json::to_value(data) {
+            Ok(data) => Self::Ok { ok: true, data },
+            Err(error) => Self::failure("INTERNAL_ERROR", error.to_string()),
+        }
+    }
+
+    fn failure(code: impl Into<String>, message: impl Into<String>) -> Self {
+        Self::Err {
+            ok: false,
+            error: NativeErrorPayload {
+                code: code.into(),
+                message: message.into(),
+                details: None,
+            },
+        }
+    }
+}
+
+pub struct AppState {
+    inner: Mutex<NativeState>,
+}
+
+struct NativeState {
+    active_project_id: Option<String>,
+    projects: HashMap<String, ProjectSession>,
+}
+
+struct ProjectSession {
+    database: Arc<Mutex<Database>>,
+    jobs: JobEngine,
+    asset_fps: HashMap<String, RationalTimeBase>,
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl AppState {
+    pub fn new() -> Self {
+        Self {
+            inner: Mutex::new(NativeState {
+                active_project_id: None,
+                projects: HashMap::new(),
+            }),
+        }
+    }
+}
+
+/// Pure dispatch entrypoint used by tests and registered by the desktop host as
+/// its one native command. It always serializes domain failures as NativeResponse.
+pub fn dispatch(state: &AppState, request: NativeRequest) -> NativeResponse {
+    match dispatch_inner(state, request) {
+        Ok(data) => NativeResponse::success(data),
+        Err(error) => NativeResponse::failure(error.code(), error.to_string()),
+    }
+}
+
+#[derive(Debug)]
+struct DispatchError {
+    code: &'static str,
+    message: String,
+}
+
+impl DispatchError {
+    fn new(code: &'static str, message: impl Into<String>) -> Self {
+        Self {
+            code,
+            message: message.into(),
+        }
+    }
+
+    fn code(&self) -> &'static str {
+        self.code
+    }
+}
+
+impl std::fmt::Display for DispatchError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(&self.message)
+    }
+}
+
+fn dispatch_inner(state: &AppState, request: NativeRequest) -> Result<Value, DispatchError> {
+    match request.command.as_str() {
+        "health.get" => health(),
+        "project.create" => project_create(state, &request),
+        "project.open" => project_open(state, &request),
+        "project.list" => project_list(state),
+        "asset.import" => asset_import(state, &request),
+        "asset.list" => asset_list(state, &request),
+        "composition.get" => composition_get(state, &request),
+        "composition.apply" => composition_apply(state, &request),
+        "revision.create" => revision_create(state, &request),
+        "revision.list" => revision_list(state, &request),
+        "revision.restore" => revision_restore(state, &request),
+        "render.enqueue" => render_enqueue(state, &request),
+        "job.run" => job_run(state, &request),
+        "job.list" => job_list(state, &request),
+        "job.cancel" => job_cancel(state, &request),
+        "job.retry" => job_retry(state, &request),
+        _ => Err(DispatchError::new(
+            "INTERNAL_ERROR",
+            format!("unsupported native command: {}", request.command),
+        )),
+    }
+}
+
+fn health() -> Result<Value, DispatchError> {
+    let ffmpeg = MediaEngine::homebrew();
+    let (ffmpeg_available, ffmpeg_version) = match ffmpeg {
+        Ok(_) => (true, Some("9.0.1")),
+        Err(_) => (false, None),
+    };
+    Ok(json!({
+        "tauriConnected": true,
+        "ffmpegAvailable": ffmpeg_available,
+        "ffmpegVersion": ffmpeg_version,
+        "storageFreeBytes": 0_u64,
+        "modelsInstalled": []
+    }))
+}
+
+fn project_create(state: &AppState, request: &NativeRequest) -> Result<Value, DispatchError> {
+    require_operation_id(request)?;
+    let name = required_string(&request.payload, "name")?;
+    let path = required_string(&request.payload, "path")?;
+    let aspect_ratio = required_string(&request.payload, "aspectRatio")?;
+    let fps_numerator = required_i64(&request.payload, "fpsNumerator")?;
+    let fps_denominator = required_i64(&request.payload, "fpsDenominator")?;
+    let database_path = Path::new(&path).join(".cutroom").join("project.cutroom");
+    let mut database = Database::open(&database_path).map_err(map_core_error)?;
+    let project = database
+        .projects()
+        .create(ProjectInput {
+            name,
+            path,
+            aspect_ratio,
+            fps: RationalTimeBase::new(fps_numerator, fps_denominator).map_err(map_core_error)?,
+        })
+        .map_err(map_core_error)?;
+    let session = session_for(database)?;
+    let mut native = state
+        .inner
+        .lock()
+        .map_err(|_| DispatchError::new("INTERNAL_ERROR", "native state mutex poisoned"))?;
+    native.active_project_id = Some(project.id.clone());
+    native.projects.insert(project.id.clone(), session);
+    project_dto(&project, &native.projects[&project.id])
+}
+
+fn project_open(state: &AppState, request: &NativeRequest) -> Result<Value, DispatchError> {
+    let project_id = required_project_id(request)?;
+    let cold_path = optional_string(&request.payload, "path")?;
+    let mut native = state
+        .inner
+        .lock()
+        .map_err(|_| DispatchError::new("INTERNAL_ERROR", "native state mutex poisoned"))?;
+    if !native.projects.contains_key(&project_id) {
+        let path = cold_path.ok_or_else(|| {
+            DispatchError::new(
+                "PROJECT_NOT_FOUND",
+                format!("project not registered and no cold-open path supplied: {project_id}"),
+            )
+        })?;
+        let database_path = Path::new(&path).join(".cutroom").join("project.cutroom");
+        let database = Database::open(database_path).map_err(map_core_error)?;
+        native
+            .projects
+            .insert(project_id.clone(), session_for(database)?);
+    }
+    let dto = {
+        let session = native
+            .projects
+            .get_mut(&project_id)
+            .expect("inserted or existing session");
+        let project = with_database(&session.database, |database| {
+            database.projects().open(&project_id)
+        })?;
+        project_dto(&project, session)?
+    };
+    native.active_project_id = Some(project_id);
+    Ok(dto)
+}
+
+fn project_list(state: &AppState) -> Result<Value, DispatchError> {
+    let mut native = state
+        .inner
+        .lock()
+        .map_err(|_| DispatchError::new("INTERNAL_ERROR", "native state mutex poisoned"))?;
+    let mut projects = Vec::new();
+    for session in native.projects.values_mut() {
+        let listed = with_database(&session.database, |database| database.projects().list())?;
+        for project in listed {
+            projects.push(project_dto(&project, session)?);
+        }
+    }
+    projects.sort_by(|left, right| left["createdAt"].as_str().cmp(&right["createdAt"].as_str()));
+    Ok(Value::Array(projects))
+}
+
+fn asset_import(state: &AppState, request: &NativeRequest) -> Result<Value, DispatchError> {
+    require_operation_id(request)?;
+    let project_id = required_project_id(request)?;
+    let path = match optional_string(&request.payload, "path")? {
+        Some(path) => path,
+        None if request
+            .payload
+            .get("openFileDialog")
+            .and_then(Value::as_bool)
+            .unwrap_or(false) =>
+        {
+            return Err(DispatchError::new(
+                "UNSUPPORTED_MEDIA",
+                "native file dialog is unavailable in the testable dispatch host; provide a selected local path",
+            ));
+        }
+        None => {
+            return Err(DispatchError::new(
+                "UNSUPPORTED_MEDIA",
+                "asset path is required",
+            ));
+        }
+    };
+    let import_type = required_string(&request.payload, "importType")?;
+    let engine = MediaEngine::homebrew().map_err(map_media_error)?;
+    let probe = engine
+        .probe(Path::new(&path), &CancellationToken::new())
+        .map_err(map_media_error)?;
+    let name = optional_string(&request.payload, "name")?.unwrap_or_else(|| {
+        Path::new(&path)
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("Imported media")
+            .to_owned()
+    });
+    let size_bytes = fs::metadata(&probe.source)
+        .map_err(|error| DispatchError::new("UNSUPPORTED_MEDIA", error.to_string()))?
+        .len() as i64;
+    let mut native = state
+        .inner
+        .lock()
+        .map_err(|_| DispatchError::new("INTERNAL_ERROR", "native state mutex poisoned"))?;
+    let session = session_mut(&mut native, &project_id)?;
+    let asset = with_database(&session.database, |database| {
+        database.assets().create(AssetInput {
+            project_id: project_id.clone(),
+            name,
+            path: probe.source.display().to_string(),
+            size_bytes,
+            duration: probe.video.duration.clone(),
+            width: i64::from(probe.video.width),
+            height: i64::from(probe.video.height),
+            format: file_format(&probe.source),
+            codec: probe.video.codec.clone(),
+            audio_channels: probe
+                .audio
+                .as_ref()
+                .map_or(0, |audio| i64::from(audio.channels)),
+            import_type,
+            sha256: Some(probe.sha256.clone()),
+        })
+    })?;
+    session
+        .asset_fps
+        .insert(asset.id.clone(), probe.video.frame_rate);
+    asset_dto(&asset, session)
+}
+
+fn asset_list(state: &AppState, request: &NativeRequest) -> Result<Value, DispatchError> {
+    let project_id = required_project_id(request)?;
+    let mut native = state
+        .inner
+        .lock()
+        .map_err(|_| DispatchError::new("INTERNAL_ERROR", "native state mutex poisoned"))?;
+    let session = session_mut(&mut native, &project_id)?;
+    let assets = with_database(&session.database, |database| {
+        database.assets().list(&project_id)
+    })?;
+    assets
+        .iter()
+        .map(|asset| asset_dto(asset, session))
+        .collect::<Result<Vec<_>, _>>()
+        .map(Value::Array)
+}
+
+fn composition_get(state: &AppState, request: &NativeRequest) -> Result<Value, DispatchError> {
+    let project_id = required_project_id(request)?;
+    let session = session(state, &project_id)?;
+    let composition = with_database(&session.database, |database| {
+        database.compositions().get(&project_id)
+    })?;
+    Ok(composition_dto(&composition))
+}
+
+fn composition_apply(state: &AppState, request: &NativeRequest) -> Result<Value, DispatchError> {
+    let project_id = required_project_id(request)?;
+    let operation_id = require_operation_id(request)?;
+    let expected_version = require_expected_version(request)?;
+    let action = required_string(&request.payload, "action")?;
+    let session = session(state, &project_id)?;
+    let response = with_database(&session.database, |database| {
+        let composition = database.compositions().get(&project_id)?;
+        let mutation = build_mutation(database, &composition, &request.payload, &action)?;
+        database.compositions().apply_mutation(
+            &project_id,
+            &composition.id,
+            &operation_id,
+            expected_version,
+            &mutation,
+        )
+    })?;
+    Ok(composition_dto(&response.composition))
+}
+
+fn revision_create(state: &AppState, request: &NativeRequest) -> Result<Value, DispatchError> {
+    let project_id = required_project_id(request)?;
+    require_operation_id(request)?;
+    let expected_version = require_expected_version(request)?;
+    let commit_note = required_string(&request.payload, "commitNote")?;
+    let session = session(state, &project_id)?;
+    let revision = with_database(&session.database, |database| {
+        let composition = database.compositions().get(&project_id)?;
+        if composition.version != expected_version {
+            return Err(CoreError::StaleWriteConflict {
+                expected: expected_version,
+                current: composition.version,
+            });
+        }
+        database.revisions().create(
+            &project_id,
+            &composition.id,
+            &commit_note,
+            "Cutroom Desktop",
+        )
+    })?;
+    Ok(revision_dto(&revision))
+}
+
+fn revision_list(state: &AppState, request: &NativeRequest) -> Result<Value, DispatchError> {
+    let project_id = required_project_id(request)?;
+    let session = session(state, &project_id)?;
+    let revisions = with_database(&session.database, |database| {
+        database.revisions().list(&project_id)
+    })?;
+    Ok(Value::Array(revisions.iter().map(revision_dto).collect()))
+}
+
+fn revision_restore(state: &AppState, request: &NativeRequest) -> Result<Value, DispatchError> {
+    let project_id = required_project_id(request)?;
+    require_operation_id(request)?;
+    let expected_version = require_expected_version(request)?;
+    let revision_id = required_string(&request.payload, "revisionId")?;
+    let session = session(state, &project_id)?;
+    let revision = with_database(&session.database, |database| {
+        let composition = database.compositions().get(&project_id)?;
+        database.revisions().restore(
+            &project_id,
+            &composition.id,
+            &revision_id,
+            expected_version,
+        )?;
+        database.revisions().get(&project_id, &revision_id)
+    })?;
+    Ok(revision_dto(&revision))
+}
+
+fn render_enqueue(state: &AppState, request: &NativeRequest) -> Result<Value, DispatchError> {
+    let project_id = required_project_id(request)?;
+    let operation_id = require_operation_id(request)?;
+    let expected_version = require_expected_version(request)?;
+    if required_string(&request.payload, "preset")? != "1080p_sdr" {
+        return Err(DispatchError::new(
+            "UNSUPPORTED_MEDIA",
+            "only 1080p_sdr is implemented",
+        ));
+    }
+    let revision_id = required_string(&request.payload, "revisionId")?;
+    let session = session(state, &project_id)?;
+    let current = with_database(&session.database, |database| {
+        database.compositions().get(&project_id)
+    })?;
+    if current.version != expected_version {
+        return Err(map_core_error(CoreError::StaleWriteConflict {
+            expected: expected_version,
+            current: current.version,
+        }));
+    }
+    let job = session
+        .jobs
+        .enqueue_render(JobEnqueue {
+            operation_id,
+            project_id,
+            revision_id,
+            dependency_job_id: None,
+        })
+        .map_err(map_jobs_error)?;
+    Ok(job_dto(&job))
+}
+
+fn job_run(state: &AppState, request: &NativeRequest) -> Result<Value, DispatchError> {
+    let project_id = required_project_id(request)?;
+    let session = session(state, &project_id)?;
+    let job = session.jobs.run_once().map_err(map_jobs_error)?;
+    Ok(job.map(|job| job_dto(&job)).unwrap_or(Value::Null))
+}
+
+fn job_list(state: &AppState, request: &NativeRequest) -> Result<Value, DispatchError> {
+    let project_id = required_project_id(request)?;
+    let session = session(state, &project_id)?;
+    let jobs = session.jobs.list(&project_id).map_err(map_jobs_error)?;
+    Ok(Value::Array(jobs.iter().map(job_dto).collect()))
+}
+
+fn job_cancel(state: &AppState, request: &NativeRequest) -> Result<Value, DispatchError> {
+    let project_id = required_project_id(request)?;
+    require_operation_id(request)?;
+    let job_id = required_string(&request.payload, "jobId")?;
+    let session = session(state, &project_id)?;
+    let existing = session.jobs.get(&job_id).map_err(map_jobs_error)?;
+    if existing.project_id != project_id {
+        return Err(DispatchError::new(
+            "JOB_NOT_FOUND",
+            "job belongs to another project",
+        ));
+    }
+    let job = session.jobs.cancel(&job_id).map_err(map_jobs_error)?;
+    Ok(job_dto(&job))
+}
+
+fn job_retry(state: &AppState, request: &NativeRequest) -> Result<Value, DispatchError> {
+    let project_id = required_project_id(request)?;
+    require_operation_id(request)?;
+    let job_id = required_string(&request.payload, "jobId")?;
+    let session = session(state, &project_id)?;
+    let existing = session.jobs.get(&job_id).map_err(map_jobs_error)?;
+    if existing.project_id != project_id {
+        return Err(DispatchError::new(
+            "JOB_NOT_FOUND",
+            "job belongs to another project",
+        ));
+    }
+    let job = session.jobs.retry(&job_id).map_err(map_jobs_error)?;
+    Ok(job_dto(&job))
+}
+
+fn session_for(database: Database) -> Result<ProjectSession, DispatchError> {
+    let database = Arc::new(Mutex::new(database));
+    let media = MediaEngine::homebrew().map_err(map_media_error)?;
+    Ok(ProjectSession {
+        jobs: JobEngine::new(Arc::clone(&database), media),
+        database,
+        asset_fps: HashMap::new(),
+    })
+}
+
+fn session(state: &AppState, project_id: &str) -> Result<ProjectSessionRef, DispatchError> {
+    let native = state
+        .inner
+        .lock()
+        .map_err(|_| DispatchError::new("INTERNAL_ERROR", "native state mutex poisoned"))?;
+    let session = native.projects.get(project_id).ok_or_else(|| {
+        DispatchError::new(
+            "PROJECT_NOT_FOUND",
+            format!("project not registered: {project_id}"),
+        )
+    })?;
+    Ok(ProjectSessionRef {
+        database: Arc::clone(&session.database),
+        jobs: session.jobs.clone(),
+    })
+}
+
+struct ProjectSessionRef {
+    database: Arc<Mutex<Database>>,
+    jobs: JobEngine,
+}
+
+fn session_mut<'a>(
+    state: &'a mut NativeState,
+    project_id: &str,
+) -> Result<&'a mut ProjectSession, DispatchError> {
+    state.projects.get_mut(project_id).ok_or_else(|| {
+        DispatchError::new(
+            "PROJECT_NOT_FOUND",
+            format!("project not registered: {project_id}"),
+        )
+    })
+}
+
+fn with_database<T>(
+    database: &Arc<Mutex<Database>>,
+    operation: impl FnOnce(&mut Database) -> cutroom_core::Result<T>,
+) -> Result<T, DispatchError> {
+    let mut database = database
+        .lock()
+        .map_err(|_| DispatchError::new("INTERNAL_ERROR", "project database mutex poisoned"))?;
+    operation(&mut database).map_err(map_core_error)
+}
+
+fn build_mutation(
+    database: &mut Database,
+    composition: &Composition,
+    payload: &Value,
+    action: &str,
+) -> cutroom_core::Result<CompositionMutation> {
+    match action {
+        "add" => mutation_add(database, composition, payload),
+        "split" => mutation_split(database, composition, payload),
+        "trim" => mutation_trim(database, composition, payload),
+        "reorder" => mutation_reorder(database, composition, payload),
+        _ => Err(CoreError::InvalidInput(format!(
+            "unsupported composition action: {action}"
+        ))),
+    }
+}
+
+fn mutation_add(
+    database: &mut Database,
+    composition: &Composition,
+    payload: &Value,
+) -> cutroom_core::Result<CompositionMutation> {
+    let asset_id = required_string_core(payload, "assetId")?;
+    let asset = database.assets().get(&asset_id)?;
+    let source_in = RationalTime::new(
+        required_string_core(payload, "sourceInTicks")?,
+        asset.duration.time_base.clone(),
+    )?;
+    let source_out = RationalTime::new(
+        required_string_core(payload, "sourceOutTicks")?,
+        asset.duration.time_base.clone(),
+    )?;
+    let timeline_start = RationalTime::new(
+        optional_string_core(payload, "timelineStartTicks")?
+            .unwrap_or_else(|| composition.duration_ticks.clone()),
+        composition.time_base.clone(),
+    )?;
+    let track_id = optional_string_core(payload, "trackId")?.or_else(|| {
+        composition
+            .tracks
+            .iter()
+            .find(|track| track.kind == "primary_video")
+            .map(|track| track.id.clone())
+    });
+    let mut operations = Vec::new();
+    let track_id = match track_id {
+        Some(track_id) => track_id,
+        None => {
+            let track_id = Uuid::new_v4().to_string();
+            operations.push(TimelineOperation::AddTrack {
+                track: TrackInput {
+                    id: Some(track_id.clone()),
+                    kind: "primary_video".into(),
+                    label: "V1".into(),
+                    sort_order: 0,
+                    is_muted: false,
+                    is_locked: false,
+                },
+            });
+            track_id
+        }
+    };
+    let in_ticks = source_in.ticks_i128()?;
+    let out_ticks = source_out.ticks_i128()?;
+    let source_duration = RationalTime::from_ticks(
+        out_ticks
+            .checked_sub(in_ticks)
+            .ok_or(CoreError::ArithmeticOverflow)?,
+        asset.duration.time_base.clone(),
+    )?;
+    let timeline_duration = RationalTime::new(
+        source_duration.exact_ticks_in(&composition.time_base)?,
+        composition.time_base.clone(),
+    )?;
+    operations.push(TimelineOperation::AddClip {
+        clip: ClipInput {
+            id: Some(Uuid::new_v4().to_string()),
+            track_id,
+            asset_id,
+            name: asset.name,
+            in_time: source_in,
+            out_time: source_out,
+            timeline_start,
+            timeline_duration,
+            sort_order: composition.clips.len() as i64,
+        },
+    });
+    Ok(CompositionMutation { operations })
+}
+
+fn mutation_trim(
+    database: &mut Database,
+    composition: &Composition,
+    payload: &Value,
+) -> cutroom_core::Result<CompositionMutation> {
+    let target = find_clip(composition, &required_string_core(payload, "clipId")?)?;
+    let asset = database.assets().get(&target.asset_id)?;
+    let in_time = RationalTime::new(
+        required_string_core(payload, "newInTicks")?,
+        asset.duration.time_base.clone(),
+    )?;
+    let out_time = RationalTime::new(
+        required_string_core(payload, "newOutTicks")?,
+        asset.duration.time_base.clone(),
+    )?;
+    let trimmed = clip_input(target, &asset, in_time, out_time, composition)?;
+    let mut next_start = trimmed
+        .timeline_start
+        .ticks_i128()?
+        .checked_add(trimmed.timeline_duration.ticks_i128()?)
+        .ok_or(CoreError::ArithmeticOverflow)?;
+    let mut operations = vec![TimelineOperation::UpdateClip { clip: trimmed }];
+    let mut following: Vec<&Clip> = composition
+        .clips
+        .iter()
+        .filter(|clip| {
+            clip.track_id == target.track_id
+                && clip.timeline_start_ticks > target.timeline_start_ticks
+                && clip.id != target.id
+        })
+        .collect();
+    following.sort_by_key(|clip| clip.sort_order);
+    for clip in following {
+        let clip_asset = database.assets().get(&clip.asset_id)?;
+        let mut updated = clip_input(
+            clip,
+            &clip_asset,
+            RationalTime::new(clip.in_ticks.clone(), clip_asset.duration.time_base.clone())?,
+            RationalTime::new(
+                clip.out_ticks.clone(),
+                clip_asset.duration.time_base.clone(),
+            )?,
+            composition,
+        )?;
+        updated.timeline_start =
+            RationalTime::from_ticks(next_start, composition.time_base.clone())?;
+        next_start = next_start
+            .checked_add(updated.timeline_duration.ticks_i128()?)
+            .ok_or(CoreError::ArithmeticOverflow)?;
+        operations.push(TimelineOperation::UpdateClip { clip: updated });
+    }
+    Ok(CompositionMutation { operations })
+}
+
+fn mutation_split(
+    database: &mut Database,
+    composition: &Composition,
+    payload: &Value,
+) -> cutroom_core::Result<CompositionMutation> {
+    let target = find_clip(composition, &required_string_core(payload, "clipId")?)?;
+    let split = required_string_core(payload, "splitPointTicks")?
+        .parse::<i128>()
+        .map_err(|_| {
+            CoreError::InvalidInput("splitPointTicks must be canonical integer text".into())
+        })?;
+    let timeline_start = target
+        .timeline_start_ticks
+        .parse::<i128>()
+        .map_err(|_| CoreError::InvalidInput("stored clip start is invalid".into()))?;
+    let timeline_duration = target
+        .timeline_duration_ticks
+        .parse::<i128>()
+        .map_err(|_| CoreError::InvalidInput("stored clip duration is invalid".into()))?;
+    if split <= timeline_start
+        || split
+            >= timeline_start
+                .checked_add(timeline_duration)
+                .ok_or(CoreError::ArithmeticOverflow)?
+    {
+        return Err(CoreError::InvalidInput(
+            "split point must be strictly inside the clip".into(),
+        ));
+    }
+    let asset = database.assets().get(&target.asset_id)?;
+    let offset = RationalTime::from_ticks(split - timeline_start, composition.time_base.clone())?;
+    let source_offset = offset
+        .exact_ticks_in(&asset.duration.time_base)?
+        .parse::<i128>()
+        .map_err(|_| CoreError::ArithmeticOverflow)?;
+    let source_in = target
+        .in_ticks
+        .parse::<i128>()
+        .map_err(|_| CoreError::InvalidInput("stored source in is invalid".into()))?;
+    let source_split = source_in
+        .checked_add(source_offset)
+        .ok_or(CoreError::ArithmeticOverflow)?;
+    let old_out = RationalTime::new(target.out_ticks.clone(), asset.duration.time_base.clone())?;
+    let first = clip_input(
+        target,
+        &asset,
+        RationalTime::new(target.in_ticks.clone(), asset.duration.time_base.clone())?,
+        RationalTime::from_ticks(source_split, asset.duration.time_base.clone())?,
+        composition,
+    )?;
+    let mut second = clip_input(
+        target,
+        &asset,
+        RationalTime::from_ticks(source_split, asset.duration.time_base.clone())?,
+        old_out,
+        composition,
+    )?;
+    second.id = Some(Uuid::new_v4().to_string());
+    second.timeline_start = RationalTime::from_ticks(split, composition.time_base.clone())?;
+    second.sort_order = target.sort_order + 1;
+    Ok(CompositionMutation {
+        operations: vec![
+            TimelineOperation::UpdateClip { clip: first },
+            TimelineOperation::AddClip { clip: second },
+        ],
+    })
+}
+
+fn mutation_reorder(
+    database: &mut Database,
+    composition: &Composition,
+    payload: &Value,
+) -> cutroom_core::Result<CompositionMutation> {
+    let clip_id = required_string_core(payload, "clipId")?;
+    let direction = required_string_core(payload, "direction")?;
+    let target = find_clip(composition, &clip_id)?;
+    let mut siblings: Vec<&Clip> = composition
+        .clips
+        .iter()
+        .filter(|clip| clip.track_id == target.track_id)
+        .collect();
+    siblings.sort_by_key(|clip| clip.sort_order);
+    let index = siblings
+        .iter()
+        .position(|clip| clip.id == target.id)
+        .ok_or_else(|| CoreError::InvalidInput("clip is not on its track".into()))?;
+    let other_index = match direction.as_str() {
+        "left" if index > 0 => index - 1,
+        "right" if index + 1 < siblings.len() => index + 1,
+        "left" | "right" => return Ok(CompositionMutation { operations: vec![] }),
+        _ => {
+            return Err(CoreError::InvalidInput(
+                "direction must be left or right".into(),
+            ));
+        }
+    };
+    let other = siblings[other_index];
+    let target_asset = database.assets().get(&target.asset_id)?;
+    let other_asset = database.assets().get(&other.asset_id)?;
+    let mut target_input = clip_input(
+        target,
+        &target_asset,
+        RationalTime::new(
+            target.in_ticks.clone(),
+            target_asset.duration.time_base.clone(),
+        )?,
+        RationalTime::new(
+            target.out_ticks.clone(),
+            target_asset.duration.time_base.clone(),
+        )?,
+        composition,
+    )?;
+    let mut other_input = clip_input(
+        other,
+        &other_asset,
+        RationalTime::new(
+            other.in_ticks.clone(),
+            other_asset.duration.time_base.clone(),
+        )?,
+        RationalTime::new(
+            other.out_ticks.clone(),
+            other_asset.duration.time_base.clone(),
+        )?,
+        composition,
+    )?;
+    std::mem::swap(&mut target_input.sort_order, &mut other_input.sort_order);
+    Ok(CompositionMutation {
+        operations: vec![
+            TimelineOperation::UpdateClip { clip: target_input },
+            TimelineOperation::UpdateClip { clip: other_input },
+        ],
+    })
+}
+
+fn clip_input(
+    clip: &Clip,
+    asset: &Asset,
+    in_time: RationalTime,
+    out_time: RationalTime,
+    composition: &Composition,
+) -> cutroom_core::Result<ClipInput> {
+    let duration = out_time
+        .ticks_i128()?
+        .checked_sub(in_time.ticks_i128()?)
+        .ok_or(CoreError::ArithmeticOverflow)?;
+    let timeline_duration = RationalTime::new(
+        RationalTime::from_ticks(duration, asset.duration.time_base.clone())?
+            .exact_ticks_in(&composition.time_base)?,
+        composition.time_base.clone(),
+    )?;
+    Ok(ClipInput {
+        id: Some(clip.id.clone()),
+        track_id: clip.track_id.clone(),
+        asset_id: clip.asset_id.clone(),
+        name: clip.name.clone(),
+        in_time,
+        out_time,
+        timeline_start: RationalTime::new(
+            clip.timeline_start_ticks.clone(),
+            composition.time_base.clone(),
+        )?,
+        timeline_duration,
+        sort_order: clip.sort_order,
+    })
+}
+
+fn find_clip<'a>(composition: &'a Composition, clip_id: &str) -> cutroom_core::Result<&'a Clip> {
+    composition
+        .clips
+        .iter()
+        .find(|clip| clip.id == clip_id)
+        .ok_or_else(|| CoreError::InvalidInput("clip not found in composition".into()))
+}
+
+fn project_dto(project: &Project, session: &ProjectSession) -> Result<Value, DispatchError> {
+    let revisions = with_database(&session.database, |database| {
+        database.revisions().list(&project.id)
+    })?;
+    let latest = revisions.last();
+    Ok(json!({
+        "id": project.id,
+        "name": project.name,
+        "path": project.path,
+        "fpsNumerator": project.fps.num,
+        "fpsDenominator": project.fps.den,
+        "aspectRatio": project.aspect_ratio,
+        "createdAt": project.created_at,
+        "updatedAt": project.updated_at,
+        "revisionCount": revisions.len(),
+        "latestRevisionId": latest.map(|revision| revision.id.clone()),
+        "status": project.status,
+    }))
+}
+
+fn asset_dto(asset: &Asset, session: &ProjectSession) -> Result<Value, DispatchError> {
+    let fps = session
+        .asset_fps
+        .get(&asset.id)
+        .cloned()
+        .unwrap_or(RationalTimeBase { num: 0, den: 0 });
+    Ok(json!({
+        "id": asset.id,
+        "projectId": asset.project_id,
+        "name": asset.name,
+        "path": asset.path,
+        "sizeBytes": asset.size_bytes,
+        "durationTicks": asset.duration.ticks,
+        "timeBase": { "num": asset.duration.time_base.num, "den": asset.duration.time_base.den },
+        "width": asset.width,
+        "height": asset.height,
+        "fpsNumerator": fps.num,
+        "fpsDenominator": fps.den,
+        "format": asset.format,
+        "codec": asset.codec,
+        "audioChannels": asset.audio_channels,
+        "importType": asset.import_type,
+        "proxyStatus": asset.proxy_status,
+        "sha256": asset.sha256,
+    }))
+}
+
+fn composition_dto(composition: &Composition) -> Value {
+    json!({
+        "id": composition.id,
+        "projectId": composition.project_id,
+        "version": composition.version,
+        "durationTicks": composition.duration_ticks,
+        "timeBase": { "num": composition.time_base.num, "den": composition.time_base.den },
+        "tracks": composition.tracks.iter().map(track_dto).collect::<Vec<_>>(),
+        "clips": composition.clips.iter().map(clip_dto).collect::<Vec<_>>(),
+        "updatedAt": composition.updated_at,
+    })
+}
+
+fn track_dto(track: &Track) -> Value {
+    json!({ "id": track.id, "kind": track.kind, "label": track.label, "order": track.sort_order, "isMuted": track.is_muted, "isLocked": track.is_locked })
+}
+
+fn clip_dto(clip: &Clip) -> Value {
+    json!({ "id": clip.id, "trackId": clip.track_id, "assetId": clip.asset_id, "name": clip.name, "inTicks": clip.in_ticks, "outTicks": clip.out_ticks, "timelineStartTicks": clip.timeline_start_ticks, "timelineDurationTicks": clip.timeline_duration_ticks })
+}
+
+fn revision_dto(revision: &Revision) -> Value {
+    json!({ "id": revision.id, "projectId": revision.project_id, "revisionNumber": revision.revision_number, "commitNote": revision.commit_note, "author": revision.author, "createdAt": revision.created_at, "contentHash": revision.content_hash, "parentRevisionId": revision.parent_revision_id })
+}
+
+fn job_dto(job: &JobRecord) -> Value {
+    let status = match job.status.as_str() {
+        "succeeded" => "completed",
+        "canceled" => "cancelled",
+        other => other,
+    };
+    json!({ "id": job.id, "projectId": job.project_id, "title": job.title, "kind": job.kind, "status": status, "step": job.stage, "currentStep": job.progress, "totalSteps": 100, "elapsedSeconds": 0, "error": job.error })
+}
+
+fn required_project_id(request: &NativeRequest) -> Result<String, DispatchError> {
+    request
+        .project_id
+        .clone()
+        .filter(|value| !value.is_empty())
+        .ok_or_else(|| DispatchError::new("PROJECT_NOT_FOUND", "project_id is required"))
+}
+
+fn require_operation_id(request: &NativeRequest) -> Result<String, DispatchError> {
+    let operation_id = request
+        .operation_id
+        .clone()
+        .or_else(|| {
+            optional_string(&request.payload, "operation_id")
+                .ok()
+                .flatten()
+        })
+        .ok_or_else(|| DispatchError::new("IDEMPOTENCY_CONFLICT", "operation_id is required"))?;
+    let parsed = Uuid::parse_str(&operation_id)
+        .map_err(|_| DispatchError::new("IDEMPOTENCY_CONFLICT", "operation_id must be UUIDv4"))?;
+    if parsed.get_version_num() != 4 {
+        return Err(DispatchError::new(
+            "IDEMPOTENCY_CONFLICT",
+            "operation_id must be UUIDv4",
+        ));
+    }
+    Ok(operation_id)
+}
+
+fn require_expected_version(request: &NativeRequest) -> Result<i64, DispatchError> {
+    request
+        .expected_version
+        .filter(|version| *version >= 1)
+        .ok_or_else(|| {
+            DispatchError::new(
+                "STALE_WRITE_CONFLICT",
+                "expected_version is required and must be positive",
+            )
+        })
+}
+
+fn required_string(payload: &Value, field: &str) -> Result<String, DispatchError> {
+    optional_string(payload, field)?
+        .filter(|value| !value.trim().is_empty())
+        .ok_or_else(|| {
+            DispatchError::new(
+                "INTERNAL_ERROR",
+                format!("missing required payload field: {field}"),
+            )
+        })
+}
+fn optional_string(payload: &Value, field: &str) -> Result<Option<String>, DispatchError> {
+    match payload.get(field) {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::String(value)) => Ok(Some(value.clone())),
+        _ => Err(DispatchError::new(
+            "INTERNAL_ERROR",
+            format!("payload field {field} must be a string"),
+        )),
+    }
+}
+fn required_i64(payload: &Value, field: &str) -> Result<i64, DispatchError> {
+    payload.get(field).and_then(Value::as_i64).ok_or_else(|| {
+        DispatchError::new(
+            "INTERNAL_ERROR",
+            format!("payload field {field} must be an integer"),
+        )
+    })
+}
+fn required_string_core(payload: &Value, field: &str) -> cutroom_core::Result<String> {
+    payload
+        .get(field)
+        .and_then(Value::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .map(str::to_owned)
+        .ok_or_else(|| CoreError::InvalidInput(format!("missing required payload field: {field}")))
+}
+fn optional_string_core(payload: &Value, field: &str) -> cutroom_core::Result<Option<String>> {
+    match payload.get(field) {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::String(value)) => Ok(Some(value.clone())),
+        _ => Err(CoreError::InvalidInput(format!(
+            "payload field {field} must be a string"
+        ))),
+    }
+}
+
+fn file_format(path: &Path) -> String {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .unwrap_or("unknown")
+        .to_ascii_lowercase()
+}
+
+fn map_core_error(error: CoreError) -> DispatchError {
+    match error {
+        CoreError::ProjectNotFound(message) => DispatchError::new("PROJECT_NOT_FOUND", message),
+        CoreError::ProjectLocked(path) => {
+            DispatchError::new("PROJECT_LOCKED", path.display().to_string())
+        }
+        CoreError::StaleWriteConflict { expected, current } => DispatchError::new(
+            "STALE_WRITE_CONFLICT",
+            format!("expected version {expected}, current version {current}"),
+        ),
+        CoreError::IdempotencyConflict { operation_id } => {
+            DispatchError::new("IDEMPOTENCY_CONFLICT", operation_id)
+        }
+        CoreError::InvalidSourceRange { asset_id, reason } => {
+            DispatchError::new("INVALID_SOURCE_RANGE", format!("{asset_id}: {reason}"))
+        }
+        CoreError::JobNotFound(message) => DispatchError::new("JOB_NOT_FOUND", message),
+        other => DispatchError::new("INTERNAL_ERROR", other.to_string()),
+    }
+}
+fn map_media_error(error: cutroom_media::MediaError) -> DispatchError {
+    match error {
+        cutroom_media::MediaError::InvalidRange { .. } => {
+            DispatchError::new("INVALID_SOURCE_RANGE", error.to_string())
+        }
+        cutroom_media::MediaError::UnsupportedMedia(_)
+        | cutroom_media::MediaError::SourceIdentityMismatch { .. }
+        | cutroom_media::MediaError::SourceChanged(_) => {
+            DispatchError::new("UNSUPPORTED_MEDIA", error.to_string())
+        }
+        other => DispatchError::new("INTERNAL_ERROR", other.to_string()),
+    }
+}
+fn map_jobs_error(error: cutroom_jobs::JobsError) -> DispatchError {
+    match error {
+        cutroom_jobs::JobsError::Core(error) => map_core_error(error),
+        cutroom_jobs::JobsError::Media(error) => map_media_error(error),
+        other => DispatchError::new("INTERNAL_ERROR", other.to_string()),
+    }
+}

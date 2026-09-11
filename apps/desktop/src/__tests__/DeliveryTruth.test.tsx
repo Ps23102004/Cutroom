@@ -43,19 +43,20 @@ describe('DeliveryTruth: Deliver Route Truth & Gating', () => {
     expect(screen.getByRole('button', { name: /Return to Home/i })).toBeDefined();
   });
 
-  it('renders output setup with planned targets and disables render submission without native engine', () => {
+  it('renders the implemented render specification and disables submission without native engine', () => {
     render(
       <AppProvider>
         <FixtureDeliverWrapper />
       </AppProvider>
     );
 
-    // Project name is displayed with truthful planned target description
-    expect(screen.getByText(/Planned master export targets and preflight validation checklist/i)).toBeDefined();
+    // Project name describes the local output that the native engine implements.
+    expect(screen.getByText(/Implemented local master export and preflight validation checklist/i)).toBeDefined();
 
-    // Target specifications show planned targets, not static profile ready
-    expect(screen.getByText(/TARGET RENDER SPECIFICATIONS \(PLANNED TARGETS\)/i)).toBeDefined();
-    expect(screen.queryByText(/Static Profile Ready/i)).toBeNull();
+    // The UI describes the only implemented native output, not a planned codec target.
+    expect(screen.getByText(/IMPLEMENTED RENDER SPECIFICATION/i)).toBeDefined();
+    expect(screen.getByText(/H\.264 \(libx264\), 1080p24/i)).toBeDefined();
+    expect(screen.getByText(/^AAC$/i)).toBeDefined();
     expect(screen.getByText(/Unavailable \(Not Checked\)/i)).toBeDefined();
 
     // Render submission is strictly disabled without connected desktop media engine

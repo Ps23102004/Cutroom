@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext';
 import { Button, Card, Tabs, Input, Select, Badge, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell, Modal } from '@cutroom/ui';
 import { PlusIcon, UploadIcon, SearchIcon, FolderIcon } from '@cutroom/ui';
 import { Asset } from '../lib/contracts';
+import { SourceViewer } from '../components/media/SourceViewer';
 
 type ProjectsSubview = 'directory' | 'overview' | 'media' | 'asset_detail';
 
@@ -10,11 +11,14 @@ export const ProjectsRoute: React.FC = () => {
   const {
     projects,
     activeProject,
-    setActiveProject,
+    openProject,
     assets,
     importAsset,
+    addClip,
+    brief,
     navigate,
     createProject,
+    isFixtureMode,
   } = useApp();
 
   const [activeSubview, setActiveSubview] = useState<ProjectsSubview>('directory');
@@ -24,7 +28,6 @@ export const ProjectsRoute: React.FC = () => {
   // Import Asset Modal state
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importFileName, setImportFileName] = useState('');
-  const [importFilePath, setImportFilePath] = useState('');
   const [importType, setImportType] = useState<'managed' | 'linked'>('managed');
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
@@ -32,7 +35,9 @@ export const ProjectsRoute: React.FC = () => {
   // Create Project Modal state
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
-  const [newProjectPath, setNewProjectPath] = useState('/workspace/projects');
+  const [newProjectAspectRatio, setNewProjectAspectRatio] = useState<'16:9' | '9:16' | '1:1'>('16:9');
+  const [newProjectFps, setNewProjectFps] = useState('24');
+  const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
   const subviewTabs = [
@@ -44,20 +49,19 @@ export const ProjectsRoute: React.FC = () => {
 
   const handleImportAsset = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!importFileName.trim()) return;
     setIsImporting(true);
     setImportError(null);
     try {
+      if (isFixtureMode) {
+        throw new Error('Exit fixture mode before importing media with the native file picker.');
+      }
       const asset = await importAsset({
-        name: importFileName.trim(),
-        path: importFilePath.trim() || `/workspace/media/${importFileName.trim()}`,
+        name: importFileName.trim() || undefined,
         importType,
-        sizeBytes: 154000000,
       });
       setSelectedAsset(asset);
       setIsImportModalOpen(false);
       setImportFileName('');
-      setImportFilePath('');
       setActiveSubview('media');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -68,24 +72,35 @@ export const ProjectsRoute: React.FC = () => {
     }
   };
 
+  const handleAddRangeFromDetail = async (inTicks: string, outTicks: string) => {
+    if (!selectedAsset) return;
+    await addClip({
+      assetId: selectedAsset.id,
+      sourceInTicks: inTicks,
+      sourceOutTicks: outTicks,
+    });
+  };
+
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newProjectName.trim()) return;
+    setIsCreating(true);
     setCreateError(null);
     try {
-      const proj = await createProject({
+      await createProject({
         name: newProjectName.trim(),
-        path: `${newProjectPath.replace(/\/$/, '')}/${newProjectName.trim()}`,
-        aspectRatio: '16:9',
-        fpsNumerator: 24,
+        aspectRatio: newProjectAspectRatio,
+        fpsNumerator: parseInt(newProjectFps, 10),
         fpsDenominator: 1,
       });
       setIsNewProjectModalOpen(false);
-      setActiveProject(proj);
+      setNewProjectName('');
       setActiveSubview('overview');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setCreateError(`Project creation failed: ${msg}`);
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -114,6 +129,8 @@ export const ProjectsRoute: React.FC = () => {
                 setImportError(null);
                 setIsImportModalOpen(true);
               }}
+              disabled={isFixtureMode}
+              title={isFixtureMode ? 'Exit fixture mode before importing native media' : undefined}
             >
               Import Media
             </Button>
@@ -144,7 +161,7 @@ export const ProjectsRoute: React.FC = () => {
 
           {projects.length === 0 ? (
             <Card padding="lg" style={{ textAlign: 'center', borderStyle: 'dashed' }}>
-              <FolderIcon size={32} style={{ color: 'var(--text-tertiary, #877E94)', margin: '0 auto 8px' }} />
+              <FolderIcon size={32} style={{ color: 'var(--text-tertiary-panel, #9A91A7)', margin: '0 auto 8px' }} />
               <h3 style={{ margin: 0, fontSize: '15px', color: 'var(--text-primary, #F3F0F6)' }}>
                 No projects found
               </h3>
@@ -187,8 +204,9 @@ export const ProjectsRoute: React.FC = () => {
                               size="sm"
                               variant={isCurrent ? 'secondary' : 'primary'}
                               onClick={() => {
-                                setActiveProject(p);
-                                setActiveSubview('overview');
+                                void openProject(p.id)
+                                  .then(() => setActiveSubview('overview'))
+                                  .catch((err) => console.error('Failed to open project:', err));
                               }}
                             >
                               {isCurrent ? 'Manage' : 'Open'}
@@ -197,8 +215,9 @@ export const ProjectsRoute: React.FC = () => {
                               size="sm"
                               variant="ghost"
                               onClick={() => {
-                                setActiveProject(p);
-                                navigate('studio');
+                                void openProject(p.id)
+                                  .then(() => navigate('studio'))
+                                  .catch((err) => console.error('Failed to open project:', err));
                               }}
                             >
                               Studio
@@ -232,12 +251,29 @@ export const ProjectsRoute: React.FC = () => {
                   <span style={{ fontWeight: 500 }}>{activeProject.aspectRatio}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary, #BAB3C5)' }}>Primary Timebase:</span>
-                  <span style={{ fontWeight: 500 }}>{activeProject.fpsNumerator} fps integer ticks</span>
+                  <span style={{ color: 'var(--text-secondary, #BAB3C5)' }}>Frame Rate:</span>
+                  <span style={{ fontWeight: 500 }}>{activeProject.fpsNumerator}/{activeProject.fpsDenominator} fps</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-secondary, #BAB3C5)' }}>Editorial Goal:</span>
+                  <span style={{ fontWeight: 500 }}>{brief?.goal || 'Not specified'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-secondary, #BAB3C5)' }}>Target Duration:</span>
+                  <span style={{ fontWeight: 500 }}>{brief?.targetDurationSeconds ? `${brief.targetDurationSeconds}s` : '60s'}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-secondary, #BAB3C5)' }}>Audience:</span>
+                  <span style={{ fontWeight: 500 }}>{brief?.audience || 'General'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: 'var(--text-secondary, #BAB3C5)' }}>Source Media Health:</span>
-                  <span style={{ color: 'var(--positive, #A7D7A1)', fontWeight: 500 }}>All files mounted locally</span>
+                  <span style={{ color: 'var(--text-secondary, #BAB3C5)', fontWeight: 500 }}>Unavailable until native verification</span>
+                </div>
+                <div style={{ marginTop: '8px' }}>
+                  <Button size="sm" variant="secondary" onClick={() => navigate('ai-briefs')}>
+                    Edit AI Brief & Constraints
+                  </Button>
                 </div>
               </div>
             </Card>
@@ -267,7 +303,14 @@ export const ProjectsRoute: React.FC = () => {
             <span style={{ fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
               Source files imported into project ({assets.length} assets)
             </span>
-            <Button size="sm" variant="primary" leftIcon={<UploadIcon size={14} />} onClick={() => setIsImportModalOpen(true)}>
+            <Button
+              size="sm"
+              variant="primary"
+              leftIcon={<UploadIcon size={14} />}
+              onClick={() => setIsImportModalOpen(true)}
+              disabled={isFixtureMode}
+              title={isFixtureMode ? 'Exit fixture mode before importing native media' : undefined}
+            >
               Import Audio/Video
             </Button>
           </div>
@@ -280,7 +323,13 @@ export const ProjectsRoute: React.FC = () => {
               <p style={{ margin: '6px 0 14px', fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
                 Import camera recordings, screencasts, or audio files to generate transcripts and edit.
               </p>
-              <Button size="sm" variant="primary" onClick={() => setIsImportModalOpen(true)}>
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => setIsImportModalOpen(true)}
+                disabled={isFixtureMode}
+                title={isFixtureMode ? 'Exit fixture mode before importing native media' : undefined}
+              >
                 Import Source Media
               </Button>
             </Card>
@@ -334,7 +383,14 @@ export const ProjectsRoute: React.FC = () => {
 
       {/* SUBVIEW 4: Asset Detail (Astra Review Correction 2: No fixed peak claims) */}
       {activeSubview === 'asset_detail' && selectedAsset && (
-        <Card padding="lg">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <SourceViewer
+            asset={selectedAsset}
+            onAddRange={handleAddRangeFromDetail}
+            aspectRatio={activeProject?.aspectRatio || '16:9'}
+          />
+
+          <Card padding="lg">
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
             <div>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
@@ -351,19 +407,21 @@ export const ProjectsRoute: React.FC = () => {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
             <Card padding="sm" raised>
-              <div style={{ fontSize: '11px', color: 'var(--text-tertiary, #877E94)' }}>CODEC</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>CODEC</div>
               <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>{selectedAsset.codec}</div>
             </Card>
             <Card padding="sm" raised>
-              <div style={{ fontSize: '11px', color: 'var(--text-tertiary, #877E94)' }}>RESOLUTION</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>RESOLUTION</div>
               <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>{selectedAsset.width} × {selectedAsset.height}</div>
             </Card>
             <Card padding="sm" raised>
-              <div style={{ fontSize: '11px', color: 'var(--text-tertiary, #877E94)' }}>TIMEBASE</div>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>{selectedAsset.fpsNumerator} fps</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>TIMEBASE</div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+                {selectedAsset.timeBase.num}/{selectedAsset.timeBase.den} s/tick · {selectedAsset.fpsNumerator}/{selectedAsset.fpsDenominator} fps
+              </div>
             </Card>
             <Card padding="sm" raised>
-              <div style={{ fontSize: '11px', color: 'var(--text-tertiary, #877E94)' }}>AUDIO CHANNELS</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>AUDIO CHANNELS</div>
               <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>{selectedAsset.audioChannels} channels</div>
             </Card>
           </div>
@@ -383,7 +441,7 @@ export const ProjectsRoute: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'var(--text-tertiary, #877E94)',
+                color: 'var(--text-tertiary-panel, #9A91A7)',
                 fontSize: '12px',
               }}
             >
@@ -395,7 +453,8 @@ export const ProjectsRoute: React.FC = () => {
             Back to Media List
           </Button>
         </Card>
-      )}
+      </div>
+    )}
 
       {/* Import Media Modal */}
       <Modal
@@ -421,20 +480,15 @@ export const ProjectsRoute: React.FC = () => {
             </div>
           )}
           <Input
-            label="File Name"
-            placeholder="interview_take01.mov"
+            label="File Name (optional)"
+            placeholder="Taken from the native file picker when blank"
             value={importFileName}
             onChange={(e) => setImportFileName(e.target.value)}
-            required
             autoFocus
           />
-          <Input
-            label="Source File Path"
-            placeholder="/workspace/recordings/camera_take.mov"
-            value={importFilePath}
-            onChange={(e) => setImportFilePath(e.target.value)}
-            hint="Absolute path to media on disk"
-          />
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+            The desktop native file picker will choose and authorize the source. Browser preview reports native-unavailable.
+          </div>
           <Select
             label="Import Storage Mode"
             value={importType}
@@ -448,8 +502,8 @@ export const ProjectsRoute: React.FC = () => {
             <Button type="button" variant="ghost" onClick={() => setIsImportModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" isLoading={isImporting} disabled={!importFileName.trim()}>
-              Import Asset
+            <Button type="submit" variant="primary" isLoading={isImporting}>
+              Choose & Import Asset
             </Button>
           </div>
         </form>
@@ -484,17 +538,31 @@ export const ProjectsRoute: React.FC = () => {
             required
             autoFocus
           />
-          <Input
-            label="Storage Directory"
-            value={newProjectPath}
-            onChange={(e) => setNewProjectPath(e.target.value)}
-            required
+          <Select
+            label="Aspect Ratio"
+            value={newProjectAspectRatio}
+            onChange={(e) => setNewProjectAspectRatio(e.target.value as '16:9' | '9:16' | '1:1')}
+            options={[
+              { value: '16:9', label: '16:9 Landscape (YouTube, Master)' },
+              { value: '9:16', label: '9:16 Vertical (Shorts, Reels, TikTok)' },
+              { value: '1:1', label: '1:1 Square (Feed)' },
+            ]}
+          />
+          <Select
+            label="Base Frame Rate"
+            value={newProjectFps}
+            onChange={(e) => setNewProjectFps(e.target.value)}
+            options={[
+              { value: '24', label: '24 fps (Cinematic Standard)' },
+              { value: '30', label: '30 fps (Web / Broadcast)' },
+              { value: '60', label: '60 fps (High Motion)' },
+            ]}
           />
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
             <Button type="button" variant="ghost" onClick={() => setIsNewProjectModalOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" disabled={!newProjectName.trim()}>
+            <Button type="submit" variant="primary" disabled={!newProjectName.trim()} isLoading={isCreating}>
               Create Project
             </Button>
           </div>
