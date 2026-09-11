@@ -10,6 +10,7 @@ export const VersionsRoute: React.FC = () => {
   const [activeSubview, setActiveSubview] = useState<VersionsSubview>('history');
   const [newCommitNote, setNewCommitNote] = useState('');
   const [isCommitting, setIsCommitting] = useState(false);
+  const [revisionError, setRevisionError] = useState<string | null>(null);
 
   if (!activeProject) {
     return (
@@ -39,10 +40,13 @@ export const VersionsRoute: React.FC = () => {
     e.preventDefault();
     if (!newCommitNote.trim()) return;
     setIsCommitting(true);
+    setRevisionError(null);
     try {
       await createRevision(newCommitNote.trim());
       setNewCommitNote('');
-    } catch (err) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setRevisionError(`Revision snapshot failed: ${msg}`);
       console.error('Failed to commit revision:', err);
     } finally {
       setIsCommitting(false);
@@ -50,10 +54,13 @@ export const VersionsRoute: React.FC = () => {
   };
 
   const handleRestore = async (id: string) => {
+    setRevisionError(null);
     try {
       await restoreRevision(id);
       setActiveSubview('history');
-    } catch (err) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setRevisionError(`Revision restore failed: ${msg}`);
       console.error('Failed to restore revision:', err);
     }
   };
@@ -70,6 +77,22 @@ export const VersionsRoute: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {revisionError && (
+        <div
+          role="alert"
+          style={{
+            padding: '10px 14px',
+            backgroundColor: 'rgba(224, 108, 117, 0.15)',
+            border: '1px solid var(--destructive, #E06C75)',
+            borderRadius: '6px',
+            color: 'var(--destructive, #E06C75)',
+            fontSize: '13px',
+          }}
+        >
+          {revisionError}
+        </div>
+      )}
 
       <Tabs items={subviewTabs} activeId={activeSubview} onChange={(id) => setActiveSubview(id as VersionsSubview)} />
 

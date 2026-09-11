@@ -1,0 +1,3316 @@
+use std::{
+    collections::HashSet,
+    fs::{self, File, OpenOptions},
+    io::ErrorKind,
+    path::{Component, Path, PathBuf},
+    time::Duration,
+};
+
+use chrono::{SecondsFormat, Utc};
+use fs2::FileExt;
+use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
+use serde::Serialize;
+use serde_json::Value;
+use sha2::{Digest, Sha256};
+use uuid::Uuid;
+
+use crate::{
+    Asset, AssetInput, Clip, ClipInput, Composition, CompositionMutation, CompositionSnapshot,
+    CoreError, JobClaim, JobEnqueue, JobRecord, JobStatus, MutationResult, Project, ProjectInput,
+    RationalTime, RationalTimeBase, RenderJobSource, RenderJobSpec, Result, Revision,
+    TimelineOperation, Track, TrackInput, checked_tick_sum, parse_ticks,
+};
+
+pub const LATEST_MIGRATION_VERSION: i64 = 3;
+
+type ProjectRow = (
+    String,
+    String,
+    String,
+    String,
+    i64,
+    i64,
+    String,
+    String,
+    String,
+);
+type AssetRow = (
+    String,
+    String,
+    String,
+    String,
+    i64,
+    String,
+    i64,
+    i64,
+    i64,
+    i64,
+    String,
+    String,
+    i64,
+    String,
+    String,
+    Option<String>,
+    String,
+);
+type RevisionRow = (
+    String,
+    String,
+    i64,
+    String,
+    String,
+    String,
+    Option<String>,
+    String,
+    String,
+);
+type JobRow = (
+    String,
+    String,
+    Option<String>,
+    Option<String>,
+    String,
+    String,
+    String,
+    String,
+    String,
+    Option<String>,
+    i64,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    String,
+    i64,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    i64,
+    Option<String>,
+    Option<String>,
+    String,
+    String,
+);
+
+const INITIAL_SCHEMA: &str = r#"
+CREATE TABLE IF NOT EXISTS projects (
+    id TEXT PRIMARY KEY NOT NULL,
+    name TEXT NOT NULL,
+    path TEXT NOT NULL,
+    aspect_ratio TEXT NOT NULL CHECK (aspect_ratio IN ('16:9', '9:16', '1:1')),
+    fps_numerator INTEGER NOT NULL,
+    fps_denominator INTEGER NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('draft', 'in_review', 'approved')) DEFAULT 'draft',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS assets (
+    id TEXT PRIMARY KEY NOT NULL,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    path TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL CHECK (size_bytes >= 0),
+    duration_ticks TEXT NOT NULL,
+    timebase_numerator INTEGER NOT NULL CHECK (timebase_numerator > 0),
+    timebase_denominator INTEGER NOT NULL CHECK (timebase_denominator > 0),
+    width INTEGER NOT NULL CHECK (width >= 0),
+    height INTEGER NOT NULL CHECK (height >= 0),
+    format TEXT NOT NULL,
+    codec TEXT NOT NULL,
+    audio_channels INTEGER NOT NULL DEFAULT 2 CHECK (audio_channels >= 0),
+    import_type TEXT NOT NULL CHECK (import_type IN ('managed', 'linked')),
+    proxy_status TEXT NOT NULL CHECK (proxy_status IN ('none', 'generating', 'ready', 'failed')) DEFAULT 'none',
+    sha256 TEXT,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_assets_project ON assets(project_id);
+CREATE TABLE IF NOT EXISTS compositions (
+    id TEXT PRIMARY KEY NOT NULL,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+    duration_ticks TEXT NOT NULL DEFAULT '0',
+    timebase_numerator INTEGER NOT NULL DEFAULT 1 CHECK (timebase_numerator > 0),
+    timebase_denominator INTEGER NOT NULL DEFAULT 48000 CHECK (timebase_denominator > 0),
+    updated_at TEXT NOT NULL,
+    UNIQUE (project_id)
+);
+CREATE TABLE IF NOT EXISTS tracks (
+    id TEXT PRIMARY KEY NOT NULL,
+    composition_id TEXT NOT NULL REFERENCES compositions(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL CHECK (kind IN ('primary_video', 'overlay_video', 'dialogue_audio', 'music_audio', 'captions', 'graphics')),
+    label TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    is_muted INTEGER NOT NULL DEFAULT 0 CHECK (is_muted IN (0, 1)),
+    is_locked INTEGER NOT NULL DEFAULT 0 CHECK (is_locked IN (0, 1))
+);
+CREATE INDEX IF NOT EXISTS idx_tracks_composition ON tracks(composition_id, sort_order);
+CREATE TABLE IF NOT EXISTS clips (
+    id TEXT PRIMARY KEY NOT NULL,
+    track_id TEXT NOT NULL REFERENCES tracks(id) ON DELETE CASCADE,
+    asset_id TEXT NOT NULL REFERENCES assets(id) ON DELETE RESTRICT,
+    name TEXT NOT NULL,
+    in_ticks TEXT NOT NULL,
+    out_ticks TEXT NOT NULL,
+    timeline_start_ticks TEXT NOT NULL,
+    timeline_duration_ticks TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_clips_track ON clips(track_id, sort_order);
+CREATE TABLE IF NOT EXISTS revisions (
+    id TEXT PRIMARY KEY NOT NULL,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    revision_number INTEGER NOT NULL,
+    commit_note TEXT NOT NULL,
+    author TEXT NOT NULL,
+    content_hash TEXT NOT NULL,
+    parent_revision_id TEXT REFERENCES revisions(id) ON DELETE SET NULL,
+    composition_snapshot TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    UNIQUE (project_id, revision_number)
+);
+CREATE INDEX IF NOT EXISTS idx_revisions_project ON revisions(project_id, revision_number);
+CREATE TRIGGER IF NOT EXISTS revisions_are_immutable
+BEFORE UPDATE ON revisions
+BEGIN
+    SELECT RAISE(ABORT, 'revisions are immutable');
+END;
+CREATE TABLE IF NOT EXISTS operation_receipts (
+    operation_id TEXT PRIMARY KEY NOT NULL,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    composition_id TEXT NOT NULL REFERENCES compositions(id) ON DELETE CASCADE,
+    expected_version INTEGER NOT NULL,
+    payload_hash TEXT NOT NULL,
+    response_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_receipts_project_composition ON operation_receipts(project_id, composition_id);
+CREATE TABLE IF NOT EXISTS jobs (
+    id TEXT PRIMARY KEY NOT NULL,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    title TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK (kind IN ('proxy', 'render', 'asr', 'waveform', 'export')),
+    status TEXT NOT NULL CHECK (status IN ('queued', 'running', 'completed', 'failed', 'cancelled')) DEFAULT 'queued',
+    step TEXT NOT NULL DEFAULT '',
+    current_step INTEGER NOT NULL DEFAULT 0,
+    total_steps INTEGER NOT NULL DEFAULT 1,
+    lease_token TEXT,
+    lease_expires_at TEXT,
+    error TEXT,
+    output_path TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_jobs_project_status ON jobs(project_id, status);
+"#;
+
+const NATIVE_RECEIPTS_SCHEMA_V3: &str = r#"
+CREATE TABLE IF NOT EXISTS native_operation_receipts (
+    operation_id TEXT PRIMARY KEY NOT NULL,
+    command TEXT NOT NULL,
+    project_id TEXT,
+    request_hash TEXT NOT NULL,
+    response_json TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_native_receipts_project ON native_operation_receipts(project_id, created_at);
+"#;
+
+const JOBS_SCHEMA_V2: &str = r#"
+ALTER TABLE jobs RENAME TO jobs_v1_legacy;
+CREATE TABLE jobs (
+    id TEXT PRIMARY KEY NOT NULL,
+    project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    revision_id TEXT REFERENCES revisions(id) ON DELETE RESTRICT,
+    operation_id TEXT,
+    title TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('queued', 'running', 'waiting', 'retrying', 'succeeded', 'failed', 'canceled')),
+    input_json TEXT NOT NULL,
+    input_digest TEXT NOT NULL,
+    config_digest TEXT,
+    attempt INTEGER NOT NULL DEFAULT 0 CHECK (attempt >= 0),
+    lease_token TEXT,
+    lease_expires_at TEXT,
+    heartbeat_at TEXT,
+    stage TEXT NOT NULL DEFAULT '',
+    progress INTEGER NOT NULL DEFAULT 0 CHECK (progress BETWEEN 0 AND 100),
+    error TEXT,
+    artifact_path TEXT,
+    artifact_sha256 TEXT,
+    cancel_requested INTEGER NOT NULL DEFAULT 0 CHECK (cancel_requested IN (0, 1)),
+    dependency_job_id TEXT REFERENCES jobs(id) ON DELETE RESTRICT,
+    scratch_dir TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+INSERT INTO jobs (
+    id, project_id, revision_id, operation_id, title, kind, status, input_json, input_digest,
+    config_digest, attempt, lease_token, lease_expires_at, heartbeat_at, stage, progress, error,
+    artifact_path, artifact_sha256, cancel_requested, dependency_job_id, scratch_dir, created_at, updated_at
+)
+SELECT
+    id, project_id, NULL, NULL, title,
+    kind,
+    CASE status
+        WHEN 'completed' THEN 'succeeded'
+        WHEN 'cancelled' THEN 'canceled'
+        WHEN 'queued' THEN 'queued'
+        WHEN 'running' THEN 'running'
+        WHEN 'failed' THEN 'failed'
+        ELSE 'failed'
+    END,
+    '{}', 'legacy:' || id, NULL,
+    CASE WHEN status = 'running' THEN 1 ELSE 0 END,
+    lease_token, lease_expires_at, NULL, step,
+    CASE WHEN total_steps > 0 THEN MIN(100, MAX(0, (current_step * 100) / total_steps)) ELSE 0 END,
+    error, output_path, NULL,
+    CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END,
+    NULL, NULL, created_at, updated_at
+FROM jobs_v1_legacy;
+DROP TABLE jobs_v1_legacy;
+CREATE UNIQUE INDEX idx_jobs_idempotency_scope
+    ON jobs(project_id, revision_id, operation_id)
+    WHERE operation_id IS NOT NULL;
+CREATE INDEX idx_jobs_project_status ON jobs(project_id, status, created_at, id);
+CREATE INDEX idx_jobs_dependency ON jobs(dependency_job_id, status);
+"#;
+
+pub struct Database {
+    connection: Connection,
+    // This descriptor owns an OS advisory lock for the entire handle lifetime.
+    // The companion inode is intentionally separate from SQLite's database inode:
+    // Darwin's whole-file advisory locks collide with SQLite's byte-range locks.
+    _lock: File,
+    database_path: PathBuf,
+    lock_path: PathBuf,
+}
+
+impl Drop for Database {
+    fn drop(&mut self) {
+        // Explicitly unlock before field destruction. This matters on Darwin where
+        // advisory-lock bookkeeping is process scoped in some filesystem paths;
+        // the persistent companion inode is retained, never removed.
+        let _ = FileExt::unlock(&self._lock);
+    }
+}
+
+impl Database {
+    /// Acquires a process-lifetime writer lock before opening SQLite or applying
+    /// migrations. The lock is an OS advisory lock on a persistent, canonical
+    /// companion inode, not a textual marker and not SQLite's database inode.
+    ///
+    /// The companion is never deleted by this crate, so a normal close or process
+    /// crash releases only the OS lock. As with the database itself, a hostile
+    /// process with filesystem write access can unlink or replace project files;
+    /// that is outside an advisory lock's integrity guarantee.
+    pub fn open(path: impl AsRef<Path>) -> Result<Self> {
+        let database_path = canonical_database_path(path.as_ref())?;
+        reject_hardlinked_path_if_present(&database_path, "database")?;
+        let lock_path = writer_lock_path(&database_path)?;
+        let lock = open_writer_lock(&lock_path)?;
+        match FileExt::try_lock_exclusive(&lock) {
+            Ok(()) => {}
+            Err(error) if error.kind() == ErrorKind::WouldBlock => {
+                return Err(CoreError::ProjectLocked(database_path));
+            }
+            Err(error) => return Err(CoreError::Io(error)),
+        }
+        verify_writer_lock_inode(&lock, &lock_path)?;
+
+        let connection = Connection::open(&database_path)?;
+        reject_hardlinked_path_if_present(&database_path, "database")?;
+        connection.busy_timeout(Duration::from_secs(5))?;
+        connection.execute_batch(
+            "PRAGMA foreign_keys = ON; PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL;",
+        )?;
+        let mut database = Self {
+            connection,
+            _lock: lock,
+            database_path,
+            lock_path,
+        };
+        database.migrate()?;
+        Ok(database)
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.database_path
+    }
+
+    /// Returns the persistent canonical companion inode used for the writer lock.
+    /// It is retained after close to avoid deleting an inode another process may use.
+    pub fn lock_path(&self) -> PathBuf {
+        self.lock_path.clone()
+    }
+
+    pub fn applied_migrations(&self) -> Result<Vec<i64>> {
+        let mut statement = self
+            .connection
+            .prepare("SELECT version FROM schema_migrations ORDER BY version")?;
+        let rows = statement.query_map([], |row| row.get(0))?;
+        Ok(rows.collect::<std::result::Result<Vec<i64>, _>>()?)
+    }
+
+    pub fn projects(&mut self) -> ProjectRepository<'_> {
+        ProjectRepository { database: self }
+    }
+
+    pub fn assets(&mut self) -> AssetRepository<'_> {
+        AssetRepository { database: self }
+    }
+
+    pub fn compositions(&mut self) -> CompositionRepository<'_> {
+        CompositionRepository { database: self }
+    }
+
+    pub fn revisions(&mut self) -> RevisionRepository<'_> {
+        RevisionRepository { database: self }
+    }
+
+    pub fn jobs(&mut self) -> JobRepository<'_> {
+        JobRepository { database: self }
+    }
+
+    /// Durable transport receipts guard non-composition IPC mutators across a
+    /// process restart. Their request hash is supplied by the transport after it
+    /// canonicalizes only caller-controlled fields.
+    pub fn native_receipts(&mut self) -> NativeReceiptRepository<'_> {
+        NativeReceiptRepository { database: self }
+    }
+
+    fn migrate(&mut self) -> Result<()> {
+        let user_version: i64 = self
+            .connection
+            .query_row("PRAGMA user_version", [], |row| row.get(0))?;
+        if user_version > LATEST_MIGRATION_VERSION {
+            return Err(CoreError::UnsupportedSchemaVersion {
+                found: user_version,
+                supported: LATEST_MIGRATION_VERSION,
+            });
+        }
+
+        // Schema DDL, migration metadata, and user_version advance together. A
+        // failed upgrade rolls back to the exact legacy database that was opened.
+        let transaction = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let has_metadata: bool = transaction.query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'schema_migrations')",
+            [],
+            |row| row.get(0),
+        )?;
+        if !has_metadata {
+            if user_version != 0
+                || core_schema_table_count(&transaction)? != 0
+                || table_exists(&transaction, "native_operation_receipts")?
+            {
+                return Err(CoreError::InvalidInput(
+                    "SQLite user_version and migration metadata are inconsistent".into(),
+                ));
+            }
+            transaction.execute_batch(
+                "CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY NOT NULL, applied_at TEXT NOT NULL);",
+            )?;
+            transaction.execute_batch(INITIAL_SCHEMA)?;
+            record_migration(&transaction, 1)?;
+            apply_jobs_v2(&transaction)?;
+            apply_native_receipts_v3(&transaction)?;
+            transaction.commit()?;
+            return Ok(());
+        }
+
+        let versions = recorded_migrations(&transaction)?;
+        if let Some(&future_version) = versions
+            .iter()
+            .find(|&&version| version > LATEST_MIGRATION_VERSION)
+        {
+            return Err(CoreError::UnsupportedSchemaVersion {
+                found: future_version,
+                supported: LATEST_MIGRATION_VERSION,
+            });
+        }
+        if core_schema_table_count(&transaction)? != 8
+            || !matches!(versions.as_slice(), [1] | [1, 2] | [1, 3] | [1, 2, 3])
+        {
+            return Err(CoreError::InvalidInput(
+                "inconsistent schema migration metadata for the B0 schema".into(),
+            ));
+        }
+
+        match versions.as_slice() {
+            // B0-A v1 databases legitimately used either user_version zero or
+            // one. Only a validated v1 jobs table may take this upgrade path.
+            [1] if matches!(user_version, 0 | 1)
+                && has_v1_jobs_schema(&transaction)?
+                && !table_exists(&transaction, "native_operation_receipts")? =>
+            {
+                apply_jobs_v2(&transaction)?;
+                apply_native_receipts_v3(&transaction)?;
+            }
+            [1, 2]
+                if user_version == 2
+                    && has_v2_jobs_schema(&transaction)?
+                    && !table_exists(&transaction, "native_operation_receipts")? =>
+            {
+                apply_native_receipts_v3(&transaction)?;
+            }
+            // The uncommitted pre-release build could create this non-canonical
+            // marker history. It is read-compatible only when the installed v2
+            // jobs and v3 receipt schemas both validate. It is never repaired by
+            // rewriting metadata or user_version.
+            [1, 3] | [1, 2, 3]
+                if user_version == LATEST_MIGRATION_VERSION
+                    && has_v2_jobs_schema(&transaction)?
+                    && has_native_receipts_schema(&transaction)? => {}
+            _ => {
+                return Err(CoreError::InvalidInput(format!(
+                    "SQLite user_version {user_version} conflicts with migration metadata"
+                )));
+            }
+        }
+        transaction.commit()?;
+        Ok(())
+    }
+}
+
+#[derive(Clone, Copy)]
+struct TableColumnSchema {
+    name: &'static str,
+    type_name: &'static str,
+    not_null: bool,
+    primary_key_position: i64,
+}
+
+const V1_JOBS_COLUMNS: &[TableColumnSchema] = &[
+    TableColumnSchema {
+        name: "id",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 1,
+    },
+    TableColumnSchema {
+        name: "project_id",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "title",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "kind",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "status",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "step",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "current_step",
+        type_name: "INTEGER",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "total_steps",
+        type_name: "INTEGER",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "lease_token",
+        type_name: "TEXT",
+        not_null: false,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "lease_expires_at",
+        type_name: "TEXT",
+        not_null: false,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "error",
+        type_name: "TEXT",
+        not_null: false,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "output_path",
+        type_name: "TEXT",
+        not_null: false,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "created_at",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "updated_at",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 0,
+    },
+];
+
+const V2_JOBS_COLUMNS: &[TableColumnSchema] = &[
+    TableColumnSchema {
+        name: "id",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 1,
+    },
+    TableColumnSchema {
+        name: "project_id",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "revision_id",
+        type_name: "TEXT",
+        not_null: false,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "operation_id",
+        type_name: "TEXT",
+        not_null: false,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "title",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "kind",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "status",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "input_json",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "input_digest",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "config_digest",
+        type_name: "TEXT",
+        not_null: false,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "attempt",
+        type_name: "INTEGER",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "lease_token",
+        type_name: "TEXT",
+        not_null: false,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "lease_expires_at",
+        type_name: "TEXT",
+        not_null: false,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "heartbeat_at",
+        type_name: "TEXT",
+        not_null: false,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "stage",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "progress",
+        type_name: "INTEGER",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "error",
+        type_name: "TEXT",
+        not_null: false,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "artifact_path",
+        type_name: "TEXT",
+        not_null: false,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "artifact_sha256",
+        type_name: "TEXT",
+        not_null: false,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "cancel_requested",
+        type_name: "INTEGER",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "dependency_job_id",
+        type_name: "TEXT",
+        not_null: false,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "scratch_dir",
+        type_name: "TEXT",
+        not_null: false,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "created_at",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "updated_at",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 0,
+    },
+];
+
+const NATIVE_RECEIPTS_COLUMNS: &[TableColumnSchema] = &[
+    TableColumnSchema {
+        name: "operation_id",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 1,
+    },
+    TableColumnSchema {
+        name: "command",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "project_id",
+        type_name: "TEXT",
+        not_null: false,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "request_hash",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "response_json",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 0,
+    },
+    TableColumnSchema {
+        name: "created_at",
+        type_name: "TEXT",
+        not_null: true,
+        primary_key_position: 0,
+    },
+];
+
+fn core_schema_table_count(connection: &Connection) -> Result<i64> {
+    Ok(connection.query_row(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('projects', 'assets', 'compositions', 'tracks', 'clips', 'revisions', 'operation_receipts', 'jobs')",
+        [],
+        |row| row.get(0),
+    )?)
+}
+
+fn has_v1_jobs_schema(connection: &Connection) -> Result<bool> {
+    has_table_columns(connection, "jobs", V1_JOBS_COLUMNS)
+}
+
+fn has_v2_jobs_schema(connection: &Connection) -> Result<bool> {
+    has_table_columns(connection, "jobs", V2_JOBS_COLUMNS)
+}
+
+fn has_native_receipts_schema(connection: &Connection) -> Result<bool> {
+    has_table_columns(
+        connection,
+        "native_operation_receipts",
+        NATIVE_RECEIPTS_COLUMNS,
+    )
+}
+
+fn table_exists(connection: &Connection, table: &str) -> Result<bool> {
+    Ok(connection.query_row(
+        "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?1)",
+        params![table],
+        |row| row.get(0),
+    )?)
+}
+
+fn has_table_columns(
+    connection: &Connection,
+    table: &str,
+    expected: &[TableColumnSchema],
+) -> Result<bool> {
+    if !table_exists(connection, table)? {
+        return Ok(false);
+    }
+    let mut statement = connection.prepare(&format!("PRAGMA table_info({table})"))?;
+    let columns = statement
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                row.get::<_, i64>(3)? != 0,
+                row.get::<_, i64>(5)?,
+            ))
+        })?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    Ok(columns.len() == expected.len()
+        && expected.iter().all(|expected| {
+            columns
+                .iter()
+                .any(|(name, type_name, not_null, primary_key_position)| {
+                    name == expected.name
+                        && type_name.eq_ignore_ascii_case(expected.type_name)
+                        && *not_null == expected.not_null
+                        && *primary_key_position == expected.primary_key_position
+                })
+        }))
+}
+
+fn recorded_migrations(transaction: &rusqlite::Transaction<'_>) -> Result<Vec<i64>> {
+    let mut statement =
+        transaction.prepare("SELECT version FROM schema_migrations ORDER BY version")?;
+    let versions = statement
+        .query_map([], |row| row.get::<_, i64>(0))?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    Ok(versions)
+}
+
+fn record_migration(transaction: &rusqlite::Transaction<'_>, version: i64) -> Result<()> {
+    transaction.execute(
+        "INSERT INTO schema_migrations (version, applied_at) VALUES (?1, ?2)",
+        params![version, now()],
+    )?;
+    transaction.execute_batch(&format!("PRAGMA user_version = {version}"))?;
+    Ok(())
+}
+
+fn apply_jobs_v2(transaction: &rusqlite::Transaction<'_>) -> Result<()> {
+    transaction.execute_batch(JOBS_SCHEMA_V2)?;
+    record_migration(transaction, 2)
+}
+
+fn apply_native_receipts_v3(transaction: &rusqlite::Transaction<'_>) -> Result<()> {
+    transaction.execute_batch(NATIVE_RECEIPTS_SCHEMA_V3)?;
+    record_migration(transaction, 3)
+}
+
+fn canonical_database_path(path: &Path) -> Result<PathBuf> {
+    let path = absolute_lexical_path(path)?;
+    let parent = path
+        .parent()
+        .ok_or_else(|| CoreError::InvalidInput("database path has no parent directory".into()))?;
+    let file_name = path
+        .file_name()
+        .ok_or_else(|| CoreError::InvalidInput("database path has no file name".into()))?;
+
+    reject_symlinked_ancestors(parent)?;
+    fs::create_dir_all(parent)?;
+    // Recheck after creating missing directories so an existing symlink is never
+    // silently accepted as part of the database path.
+    reject_symlinked_ancestors(parent)?;
+    let canonical_parent = fs::canonicalize(parent)?;
+
+    match fs::symlink_metadata(&path) {
+        Ok(metadata) if metadata.file_type().is_symlink() => Err(CoreError::InvalidInput(
+            "database path must not be a symlink".into(),
+        )),
+        Ok(metadata) if !metadata.file_type().is_file() => Err(CoreError::InvalidInput(
+            "database path must be a regular file".into(),
+        )),
+        Ok(_) => Ok(fs::canonicalize(&path)?),
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(canonical_parent.join(file_name)),
+        Err(error) => Err(CoreError::Io(error)),
+    }
+}
+
+fn absolute_lexical_path(path: &Path) -> Result<PathBuf> {
+    let absolute = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir()?.join(path)
+    };
+    let mut normalized = PathBuf::new();
+    for component in absolute.components() {
+        match component {
+            Component::Prefix(prefix) => normalized.push(prefix.as_os_str()),
+            Component::RootDir => normalized.push(component.as_os_str()),
+            Component::CurDir => {}
+            Component::ParentDir => {
+                if !normalized.pop() {
+                    return Err(CoreError::InvalidInput(
+                        "database path escapes its filesystem root".into(),
+                    ));
+                }
+            }
+            Component::Normal(name) => normalized.push(name),
+        }
+    }
+    Ok(normalized)
+}
+
+fn reject_symlinked_ancestors(path: &Path) -> Result<()> {
+    for ancestor in path.ancestors() {
+        match fs::symlink_metadata(ancestor) {
+            Ok(metadata) if metadata.file_type().is_symlink() => {
+                if !is_macos_system_alias(ancestor) {
+                    return Err(CoreError::InvalidInput(format!(
+                        "database path must not traverse a symlinked ancestor: {}",
+                        ancestor.display()
+                    )));
+                }
+            }
+            Ok(metadata) if !metadata.file_type().is_dir() => {
+                return Err(CoreError::InvalidInput(format!(
+                    "database parent is not a directory: {}",
+                    ancestor.display()
+                )));
+            }
+            Ok(_) => {}
+            Err(error) if error.kind() == ErrorKind::NotFound => {}
+            Err(error) => return Err(CoreError::Io(error)),
+        }
+    }
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+fn is_macos_system_alias(path: &Path) -> bool {
+    let expected_target = match path {
+        path if path == Path::new("/var") => Path::new("/private/var"),
+        path if path == Path::new("/tmp") => Path::new("/private/tmp"),
+        path if path == Path::new("/etc") => Path::new("/private/etc"),
+        _ => return false,
+    };
+    let Ok(target) = fs::read_link(path) else {
+        return false;
+    };
+    let resolved_target = if target.is_absolute() {
+        target
+    } else {
+        path.parent().unwrap_or_else(|| Path::new("/")).join(target)
+    };
+    resolved_target == expected_target
+}
+
+#[cfg(not(target_os = "macos"))]
+fn is_macos_system_alias(_path: &Path) -> bool {
+    false
+}
+
+fn writer_lock_path(database_path: &Path) -> Result<PathBuf> {
+    let mut name = database_path
+        .file_name()
+        .ok_or_else(|| CoreError::InvalidInput("database path has no file name".into()))?
+        .to_os_string();
+    name.push(".writer.lock");
+    Ok(database_path.with_file_name(name))
+}
+
+fn open_writer_lock(path: &Path) -> Result<File> {
+    loop {
+        match fs::symlink_metadata(path) {
+            Ok(metadata) if metadata.file_type().is_symlink() => {
+                return Err(CoreError::InvalidInput(format!(
+                    "writer lock must not be a symlink: {}",
+                    path.display()
+                )));
+            }
+            Ok(metadata) if !metadata.file_type().is_file() => {
+                return Err(CoreError::InvalidInput(format!(
+                    "writer lock must be a regular file: {}",
+                    path.display()
+                )));
+            }
+            Ok(_) => {
+                let lock = open_existing_writer_lock(path)?;
+                reject_hardlinked_path(&lock, path, "writer lock")?;
+                return Ok(lock);
+            }
+            Err(error) if error.kind() == ErrorKind::NotFound => {
+                match OpenOptions::new()
+                    .create_new(true)
+                    .read(true)
+                    .write(true)
+                    .open(path)
+                {
+                    Ok(lock) => {
+                        reject_hardlinked_path(&lock, path, "writer lock")?;
+                        return Ok(lock);
+                    }
+                    Err(error) if error.kind() == ErrorKind::AlreadyExists => continue,
+                    Err(error) => return Err(CoreError::Io(error)),
+                }
+            }
+            Err(error) => return Err(CoreError::Io(error)),
+        }
+    }
+}
+
+fn verify_writer_lock_inode(lock: &File, path: &Path) -> Result<()> {
+    let named = fs::symlink_metadata(path)?;
+    if named.file_type().is_symlink() || !named.file_type().is_file() {
+        return Err(CoreError::InvalidInput(format!(
+            "writer lock changed type while opening: {}",
+            path.display()
+        )));
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        let held = lock.metadata()?;
+        if held.dev() != named.dev() || held.ino() != named.ino() {
+            return Err(CoreError::InvalidInput(format!(
+                "writer lock inode changed while opening: {}",
+                path.display()
+            )));
+        }
+    }
+    #[cfg(not(unix))]
+    let _ = lock;
+    Ok(())
+}
+
+fn open_existing_writer_lock(path: &Path) -> std::io::Result<File> {
+    let mut options = OpenOptions::new();
+    options.read(true).write(true);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::OpenOptionsExt;
+        options.custom_flags(libc::O_NOFOLLOW);
+    }
+    options.open(path)
+}
+
+fn reject_hardlinked_path_if_present(path: &Path, label: &str) -> Result<()> {
+    match File::open(path) {
+        Ok(file) => reject_hardlinked_path(&file, path, label),
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(CoreError::Io(error)),
+    }
+}
+
+fn reject_hardlinked_path(file: &File, path: &Path, label: &str) -> Result<()> {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        if file.metadata()?.nlink() != 1 {
+            return Err(CoreError::InvalidInput(format!(
+                "hard-linked {label} files are unsupported for single-writer safety: {}",
+                path.display()
+            )));
+        }
+    }
+    #[cfg(not(unix))]
+    let _ = (file, path, label);
+    Ok(())
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum NativeReceiptLookup {
+    Missing,
+    Replay(String),
+}
+
+/// Canonical transport identity supplied by the trusted native dispatcher.
+/// It deliberately carries no filesystem selection; that authority remains at
+/// the native host boundary and is reflected only in the verified effect.
+#[derive(Clone, Debug)]
+pub struct NativeReceipt {
+    pub operation_id: String,
+    pub command: String,
+    pub project_id: Option<String>,
+    pub request_hash: String,
+}
+
+impl NativeReceipt {
+    pub fn new(
+        operation_id: String,
+        command: String,
+        project_id: Option<String>,
+        request_hash: String,
+    ) -> Self {
+        Self {
+            operation_id,
+            command,
+            project_id,
+            request_hash,
+        }
+    }
+}
+
+pub struct NativeReceiptRepository<'a> {
+    database: &'a mut Database,
+}
+
+impl NativeReceiptRepository<'_> {
+    /// Looks up an exact durable intent before an IPC handler computes IDs,
+    /// probes media, opens a picker, or observes mutable composition state.
+    pub fn lookup(
+        &self,
+        operation_id: &str,
+        command: &str,
+        project_id: Option<&str>,
+        request_hash: &str,
+    ) -> Result<NativeReceiptLookup> {
+        let receipt: Option<(String, Option<String>, String, String)> = self.database.connection.query_row(
+            "SELECT command, project_id, request_hash, response_json FROM native_operation_receipts WHERE operation_id = ?1",
+            params![operation_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+        ).optional()?;
+        match receipt {
+            None => Ok(NativeReceiptLookup::Missing),
+            Some((stored_command, stored_project_id, stored_hash, response_json))
+                if stored_command == command
+                    && stored_project_id.as_deref() == project_id
+                    && stored_hash == request_hash =>
+            {
+                Ok(NativeReceiptLookup::Replay(response_json))
+            }
+            Some(_) => Err(CoreError::IdempotencyConflict {
+                operation_id: operation_id.into(),
+            }),
+        }
+    }
+
+    /// Persists an already-completed response. Callers must use a domain method
+    /// whose write and receipt share a transaction when one exists; filesystem
+    /// effects use deterministic identities and are reconciled before this call.
+    pub fn record(
+        &mut self,
+        operation_id: &str,
+        command: &str,
+        project_id: Option<&str>,
+        request_hash: &str,
+        response_json: &str,
+    ) -> Result<()> {
+        let transaction = self
+            .database
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let existing: Option<(String, Option<String>, String)> = transaction.query_row(
+            "SELECT command, project_id, request_hash FROM native_operation_receipts WHERE operation_id = ?1",
+            params![operation_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        ).optional()?;
+        if let Some((stored_command, stored_project_id, stored_hash)) = existing {
+            if stored_command == command
+                && stored_project_id.as_deref() == project_id
+                && stored_hash == request_hash
+            {
+                transaction.commit()?;
+                return Ok(());
+            }
+            return Err(CoreError::IdempotencyConflict {
+                operation_id: operation_id.into(),
+            });
+        }
+        transaction.execute(
+            "INSERT INTO native_operation_receipts (operation_id, command, project_id, request_hash, response_json, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![operation_id, command, project_id, request_hash, response_json, now()],
+        )?;
+        transaction.commit()?;
+        Ok(())
+    }
+}
+
+fn replay_native_receipt(
+    transaction: &rusqlite::Transaction<'_>,
+    receipt: &NativeReceipt,
+) -> Result<Option<Value>> {
+    let existing: Option<(String, Option<String>, String, String)> = transaction
+        .query_row(
+            "SELECT command, project_id, request_hash, response_json FROM native_operation_receipts WHERE operation_id = ?1",
+            params![receipt.operation_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+        )
+        .optional()?;
+    match existing {
+        None => Ok(None),
+        Some((command, project_id, request_hash, response_json))
+            if command == receipt.command
+                && project_id == receipt.project_id
+                && request_hash == receipt.request_hash =>
+        {
+            Ok(Some(serde_json::from_str(&response_json)?))
+        }
+        Some(_) => Err(CoreError::IdempotencyConflict {
+            operation_id: receipt.operation_id.clone(),
+        }),
+    }
+}
+
+fn write_native_receipt(
+    transaction: &rusqlite::Transaction<'_>,
+    receipt: &NativeReceipt,
+    response: &Value,
+) -> Result<()> {
+    transaction.execute(
+        "INSERT INTO native_operation_receipts (operation_id, command, project_id, request_hash, response_json, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![
+            receipt.operation_id,
+            receipt.command,
+            receipt.project_id,
+            receipt.request_hash,
+            serde_json::to_string(response)?,
+            now(),
+        ],
+    )?;
+    Ok(())
+}
+
+pub struct ProjectRepository<'a> {
+    database: &'a mut Database,
+}
+
+impl ProjectRepository<'_> {
+    pub fn create(&mut self, input: ProjectInput) -> Result<Project> {
+        validate_project_input(&input)?;
+        let project = Project {
+            id: new_id(),
+            name: input.name,
+            path: input.path,
+            aspect_ratio: input.aspect_ratio,
+            fps: input.fps,
+            status: "draft".into(),
+            created_at: now(),
+            updated_at: now(),
+        };
+        let composition_id = new_id();
+        let transaction = self
+            .database
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        transaction.execute(
+            "INSERT INTO projects (id, name, path, aspect_ratio, fps_numerator, fps_denominator, status, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            params![project.id, project.name, project.path, project.aspect_ratio, project.fps.num, project.fps.den, project.status, project.created_at, project.updated_at],
+        )?;
+        transaction.execute(
+            "INSERT INTO compositions (id, project_id, version, duration_ticks, timebase_numerator, timebase_denominator, updated_at) VALUES (?1, ?2, 1, '0', 1, 48000, ?3)",
+            params![composition_id, project.id, project.updated_at],
+        )?;
+        transaction.commit()?;
+        Ok(project)
+    }
+
+    /// Creates the first project in a project database and commits the exact
+    /// native response in the same SQLite transaction. A second project record
+    /// in one project folder is never silently accepted.
+    pub fn create_with_native_receipt(
+        &mut self,
+        input: ProjectInput,
+        receipt: &NativeReceipt,
+        response: impl FnOnce(&Project) -> Value,
+    ) -> Result<Value> {
+        validate_project_input(&input)?;
+        let transaction = self
+            .database
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        if let Some(response) = replay_native_receipt(&transaction, receipt)? {
+            return Ok(response);
+        }
+        let project_count: i64 =
+            transaction.query_row("SELECT COUNT(*) FROM projects", [], |row| row.get(0))?;
+        if project_count != 0 {
+            return Err(CoreError::IdempotencyConflict {
+                operation_id: receipt.operation_id.clone(),
+            });
+        }
+        let project = Project {
+            // Deterministic native identity lets the discovery registry reserve
+            // the folder before this transaction commits and reconcile a crash.
+            id: receipt.operation_id.clone(),
+            name: input.name,
+            path: input.path,
+            aspect_ratio: input.aspect_ratio,
+            fps: input.fps,
+            status: "draft".into(),
+            created_at: now(),
+            updated_at: now(),
+        };
+        let composition_id = new_id();
+        transaction.execute(
+            "INSERT INTO projects (id, name, path, aspect_ratio, fps_numerator, fps_denominator, status, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            params![project.id, project.name, project.path, project.aspect_ratio, project.fps.num, project.fps.den, project.status, project.created_at, project.updated_at],
+        )?;
+        transaction.execute(
+            "INSERT INTO compositions (id, project_id, version, duration_ticks, timebase_numerator, timebase_denominator, updated_at) VALUES (?1, ?2, 1, '0', 1, 48000, ?3)",
+            params![composition_id, project.id, project.updated_at],
+        )?;
+        let response = response(&project);
+        write_native_receipt(&transaction, receipt, &response)?;
+        transaction.commit()?;
+        Ok(response)
+    }
+
+    pub fn get(&self, project_id: &str) -> Result<Project> {
+        read_project(&self.database.connection, project_id)
+    }
+
+    /// Opening a database handle performs locking; this verifies its project record.
+    pub fn open(&self, project_id: &str) -> Result<Project> {
+        self.get(project_id)
+    }
+
+    pub fn list(&self) -> Result<Vec<Project>> {
+        let mut statement = self
+            .database
+            .connection
+            .prepare("SELECT id FROM projects ORDER BY created_at, id")?;
+        let rows = statement.query_map([], |row| row.get::<_, String>(0))?;
+        let ids = rows.collect::<std::result::Result<Vec<_>, _>>()?;
+        ids.into_iter()
+            .map(|id| read_project(&self.database.connection, &id))
+            .collect()
+    }
+}
+
+pub struct AssetRepository<'a> {
+    database: &'a mut Database,
+}
+
+impl AssetRepository<'_> {
+    pub fn create(&mut self, input: AssetInput) -> Result<Asset> {
+        validate_asset_input(&input)?;
+        ensure_project(&self.database.connection, &input.project_id)?;
+        let asset = Asset {
+            id: new_id(),
+            project_id: input.project_id,
+            name: input.name,
+            path: input.path,
+            size_bytes: input.size_bytes,
+            duration: input.duration,
+            width: input.width,
+            height: input.height,
+            format: input.format,
+            codec: input.codec,
+            audio_channels: input.audio_channels,
+            import_type: input.import_type,
+            proxy_status: "none".into(),
+            sha256: input.sha256,
+            created_at: now(),
+        };
+        self.database.connection.execute(
+            "INSERT INTO assets (id, project_id, name, path, size_bytes, duration_ticks, timebase_numerator, timebase_denominator, width, height, format, codec, audio_channels, import_type, proxy_status, sha256, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
+            params![asset.id, asset.project_id, asset.name, asset.path, asset.size_bytes, asset.duration.ticks, asset.duration.time_base.num, asset.duration.time_base.den, asset.width, asset.height, asset.format, asset.codec, asset.audio_channels, asset.import_type, asset.proxy_status, asset.sha256, asset.created_at],
+        )?;
+        Ok(asset)
+    }
+
+    /// Publishes asset metadata and its native response atomically. Managed file
+    /// copy reconciliation happens before this call; no asset row is visible
+    /// without its durable IPC receipt.
+    pub fn create_with_native_receipt(
+        &mut self,
+        input: AssetInput,
+        receipt: &NativeReceipt,
+        response: impl FnOnce(&Asset) -> Value,
+    ) -> Result<Value> {
+        validate_asset_input(&input)?;
+        let transaction = self
+            .database
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        if let Some(response) = replay_native_receipt(&transaction, receipt)? {
+            return Ok(response);
+        }
+        ensure_project(&transaction, &input.project_id)?;
+        let asset = Asset {
+            id: new_id(),
+            project_id: input.project_id,
+            name: input.name,
+            path: input.path,
+            size_bytes: input.size_bytes,
+            duration: input.duration,
+            width: input.width,
+            height: input.height,
+            format: input.format,
+            codec: input.codec,
+            audio_channels: input.audio_channels,
+            import_type: input.import_type,
+            proxy_status: "none".into(),
+            sha256: input.sha256,
+            created_at: now(),
+        };
+        transaction.execute(
+            "INSERT INTO assets (id, project_id, name, path, size_bytes, duration_ticks, timebase_numerator, timebase_denominator, width, height, format, codec, audio_channels, import_type, proxy_status, sha256, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
+            params![asset.id, asset.project_id, asset.name, asset.path, asset.size_bytes, asset.duration.ticks, asset.duration.time_base.num, asset.duration.time_base.den, asset.width, asset.height, asset.format, asset.codec, asset.audio_channels, asset.import_type, asset.proxy_status, asset.sha256, asset.created_at],
+        )?;
+        let response = response(&asset);
+        write_native_receipt(&transaction, receipt, &response)?;
+        transaction.commit()?;
+        Ok(response)
+    }
+
+    pub fn get(&self, asset_id: &str) -> Result<Asset> {
+        read_asset(&self.database.connection, asset_id)
+    }
+
+    pub fn list(&self, project_id: &str) -> Result<Vec<Asset>> {
+        ensure_project(&self.database.connection, project_id)?;
+        let mut statement = self
+            .database
+            .connection
+            .prepare("SELECT id FROM assets WHERE project_id = ?1 ORDER BY created_at, id")?;
+        let rows = statement.query_map(params![project_id], |row| row.get::<_, String>(0))?;
+        let ids = rows.collect::<std::result::Result<Vec<_>, _>>()?;
+        ids.into_iter()
+            .map(|id| read_asset(&self.database.connection, &id))
+            .collect()
+    }
+}
+
+pub struct CompositionRepository<'a> {
+    database: &'a mut Database,
+}
+
+impl CompositionRepository<'_> {
+    pub fn get(&self, project_id: &str) -> Result<Composition> {
+        let composition_id: String = self
+            .database
+            .connection
+            .query_row(
+                "SELECT id FROM compositions WHERE project_id = ?1",
+                params![project_id],
+                |row| row.get(0),
+            )
+            .optional()?
+            .ok_or_else(|| CoreError::ProjectNotFound(project_id.into()))?;
+        load_composition(&self.database.connection, project_id, &composition_id)
+    }
+
+    /// Applies all operations, version advancement, and the receipt in one transaction.
+    pub fn apply_mutation(
+        &mut self,
+        project_id: &str,
+        composition_id: &str,
+        operation_id: &str,
+        expected_version: i64,
+        mutation: &CompositionMutation,
+    ) -> Result<MutationResult> {
+        let parsed_operation_id = Uuid::parse_str(operation_id)
+            .map_err(|_| CoreError::InvalidInput("operation_id must be a UUIDv4".into()))?;
+        if parsed_operation_id.get_version_num() != 4 {
+            return Err(CoreError::InvalidInput(
+                "operation_id must be a UUIDv4".into(),
+            ));
+        }
+        if expected_version < 1 {
+            return Err(CoreError::InvalidInput(
+                "expected_version must be positive".into(),
+            ));
+        }
+        let payload_hash = mutation_digest(project_id, composition_id, expected_version, mutation)?;
+        let transaction = self
+            .database
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+
+        let receipt: Option<(String, String, i64, String, String)> = transaction.query_row(
+            "SELECT project_id, composition_id, expected_version, payload_hash, response_json FROM operation_receipts WHERE operation_id = ?1",
+            params![operation_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
+        ).optional()?;
+        if let Some((
+            receipt_project,
+            receipt_composition,
+            receipt_version,
+            receipt_hash,
+            response_json,
+        )) = receipt
+        {
+            if receipt_project == project_id
+                && receipt_composition == composition_id
+                && receipt_version == expected_version
+                && receipt_hash == payload_hash
+            {
+                let mut response: MutationResult = serde_json::from_str(&response_json)?;
+                response.replayed = true;
+                return Ok(response);
+            }
+            return Err(CoreError::IdempotencyConflict {
+                operation_id: operation_id.into(),
+            });
+        }
+
+        let current = load_composition(&transaction, project_id, composition_id)?;
+        if current.version != expected_version {
+            return Err(CoreError::StaleWriteConflict {
+                expected: expected_version,
+                current: current.version,
+            });
+        }
+        for operation in &mutation.operations {
+            match operation {
+                TimelineOperation::AddTrack { track } => {
+                    insert_track(&transaction, composition_id, track)?
+                }
+                TimelineOperation::AddClip { clip } => insert_clip(
+                    &transaction,
+                    project_id,
+                    composition_id,
+                    &current.time_base,
+                    clip,
+                )?,
+                TimelineOperation::UpdateClip { clip } => update_clip(
+                    &transaction,
+                    project_id,
+                    composition_id,
+                    &current.time_base,
+                    clip,
+                )?,
+                TimelineOperation::RemoveClip { clip_id } => {
+                    remove_clip(&transaction, composition_id, clip_id)?
+                }
+            }
+        }
+        let duration_ticks = recompute_duration(&transaction, composition_id)?;
+        let next_version = current
+            .version
+            .checked_add(1)
+            .ok_or(CoreError::ArithmeticOverflow)?;
+        let updated_at = now();
+        let changed = transaction.execute(
+            "UPDATE compositions SET version = ?1, duration_ticks = ?2, updated_at = ?3 WHERE id = ?4 AND project_id = ?5 AND version = ?6",
+            params![next_version, duration_ticks, updated_at, composition_id, project_id, expected_version],
+        )?;
+        if changed != 1 {
+            return Err(CoreError::StaleWriteConflict {
+                expected: expected_version,
+                current: current.version,
+            });
+        }
+        let response = MutationResult {
+            composition: load_composition(&transaction, project_id, composition_id)?,
+            replayed: false,
+        };
+        let response_json = serde_json::to_string(&response)?;
+        transaction.execute(
+            "INSERT INTO operation_receipts (operation_id, project_id, composition_id, expected_version, payload_hash, response_json, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![operation_id, project_id, composition_id, expected_version, payload_hash, response_json, now()],
+        )?;
+        transaction.commit()?;
+        Ok(response)
+    }
+
+    /// Native transport variant of `apply_mutation`. The dispatcher performs a
+    /// non-mutating receipt lookup before compiling a request; this transaction
+    /// repeats that check so a concurrent duplicate cannot apply a generated
+    /// mutation between the lookup and receipt publication.
+    pub fn apply_mutation_with_native_receipt(
+        &mut self,
+        project_id: &str,
+        composition_id: &str,
+        expected_version: i64,
+        mutation: &CompositionMutation,
+        receipt: &NativeReceipt,
+        response: impl FnOnce(&MutationResult) -> Value,
+    ) -> Result<Value> {
+        let operation_id = receipt.operation_id.as_str();
+        let parsed_operation_id = Uuid::parse_str(operation_id)
+            .map_err(|_| CoreError::InvalidInput("operation_id must be a UUIDv4".into()))?;
+        if parsed_operation_id.get_version_num() != 4 {
+            return Err(CoreError::InvalidInput(
+                "operation_id must be a UUIDv4".into(),
+            ));
+        }
+        if expected_version < 1 {
+            return Err(CoreError::InvalidInput(
+                "expected_version must be positive".into(),
+            ));
+        }
+        let payload_hash = mutation_digest(project_id, composition_id, expected_version, mutation)?;
+        let transaction = self
+            .database
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        if let Some(response) = replay_native_receipt(&transaction, receipt)? {
+            return Ok(response);
+        }
+
+        let existing: Option<(String, String, i64, String, String)> = transaction.query_row(
+            "SELECT project_id, composition_id, expected_version, payload_hash, response_json FROM operation_receipts WHERE operation_id = ?1",
+            params![operation_id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?)),
+        ).optional()?;
+        let mutation_result = if let Some((
+            receipt_project,
+            receipt_composition,
+            receipt_version,
+            receipt_hash,
+            response_json,
+        )) = existing
+        {
+            if receipt_project == project_id
+                && receipt_composition == composition_id
+                && receipt_version == expected_version
+                && receipt_hash == payload_hash
+            {
+                let mut replay: MutationResult = serde_json::from_str(&response_json)?;
+                replay.replayed = true;
+                replay
+            } else {
+                return Err(CoreError::IdempotencyConflict {
+                    operation_id: operation_id.into(),
+                });
+            }
+        } else {
+            let current = load_composition(&transaction, project_id, composition_id)?;
+            if current.version != expected_version {
+                return Err(CoreError::StaleWriteConflict {
+                    expected: expected_version,
+                    current: current.version,
+                });
+            }
+            for operation in &mutation.operations {
+                match operation {
+                    TimelineOperation::AddTrack { track } => {
+                        insert_track(&transaction, composition_id, track)?
+                    }
+                    TimelineOperation::AddClip { clip } => insert_clip(
+                        &transaction,
+                        project_id,
+                        composition_id,
+                        &current.time_base,
+                        clip,
+                    )?,
+                    TimelineOperation::UpdateClip { clip } => update_clip(
+                        &transaction,
+                        project_id,
+                        composition_id,
+                        &current.time_base,
+                        clip,
+                    )?,
+                    TimelineOperation::RemoveClip { clip_id } => {
+                        remove_clip(&transaction, composition_id, clip_id)?
+                    }
+                }
+            }
+            let duration_ticks = recompute_duration(&transaction, composition_id)?;
+            let next_version = current
+                .version
+                .checked_add(1)
+                .ok_or(CoreError::ArithmeticOverflow)?;
+            let updated_at = now();
+            let changed = transaction.execute(
+                "UPDATE compositions SET version = ?1, duration_ticks = ?2, updated_at = ?3 WHERE id = ?4 AND project_id = ?5 AND version = ?6",
+                params![next_version, duration_ticks, updated_at, composition_id, project_id, expected_version],
+            )?;
+            if changed != 1 {
+                return Err(CoreError::StaleWriteConflict {
+                    expected: expected_version,
+                    current: current.version,
+                });
+            }
+            let applied = MutationResult {
+                composition: load_composition(&transaction, project_id, composition_id)?,
+                replayed: false,
+            };
+            let response_json = serde_json::to_string(&applied)?;
+            transaction.execute(
+                "INSERT INTO operation_receipts (operation_id, project_id, composition_id, expected_version, payload_hash, response_json, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                params![operation_id, project_id, composition_id, expected_version, payload_hash, response_json, now()],
+            )?;
+            applied
+        };
+        let response = response(&mutation_result);
+        write_native_receipt(&transaction, receipt, &response)?;
+        transaction.commit()?;
+        Ok(response)
+    }
+}
+
+pub struct RevisionRepository<'a> {
+    database: &'a mut Database,
+}
+
+impl RevisionRepository<'_> {
+    pub fn create(
+        &mut self,
+        project_id: &str,
+        composition_id: &str,
+        commit_note: &str,
+        author: &str,
+    ) -> Result<Revision> {
+        require_text(commit_note, "commit_note")?;
+        require_text(author, "author")?;
+        let transaction = self
+            .database
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let composition = load_composition(&transaction, project_id, composition_id)?;
+        let snapshot = CompositionSnapshot::from(&composition);
+        let snapshot_json = serde_json::to_string(&snapshot)?;
+        let previous: Option<(i64, String)> = transaction.query_row(
+            "SELECT revision_number, id FROM revisions WHERE project_id = ?1 ORDER BY revision_number DESC LIMIT 1",
+            params![project_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        ).optional()?;
+        let (revision_number, parent_revision_id) = match previous {
+            Some((number, id)) => (
+                number.checked_add(1).ok_or(CoreError::ArithmeticOverflow)?,
+                Some(id),
+            ),
+            None => (1, None),
+        };
+        let revision = Revision {
+            id: new_id(),
+            project_id: project_id.into(),
+            revision_number,
+            commit_note: commit_note.into(),
+            author: author.into(),
+            content_hash: sha256_hex(snapshot_json.as_bytes()),
+            parent_revision_id,
+            composition_snapshot: snapshot,
+            created_at: now(),
+        };
+        transaction.execute(
+            "INSERT INTO revisions (id, project_id, revision_number, commit_note, author, content_hash, parent_revision_id, composition_snapshot, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            params![revision.id, revision.project_id, revision.revision_number, revision.commit_note, revision.author, revision.content_hash, revision.parent_revision_id, snapshot_json, revision.created_at],
+        )?;
+        transaction.commit()?;
+        Ok(revision)
+    }
+
+    /// Creates an immutable revision and its exact native response as one
+    /// transaction, so concurrent/restarted calls cannot allocate revision #2.
+    pub fn create_with_native_receipt(
+        &mut self,
+        project_id: &str,
+        expected_version: i64,
+        commit_note: &str,
+        author: &str,
+        receipt: &NativeReceipt,
+        response: impl FnOnce(&Revision) -> Value,
+    ) -> Result<Value> {
+        require_text(commit_note, "commit_note")?;
+        require_text(author, "author")?;
+        if expected_version < 1 {
+            return Err(CoreError::InvalidInput(
+                "expected_version must be positive".into(),
+            ));
+        }
+        let transaction = self
+            .database
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        if let Some(response) = replay_native_receipt(&transaction, receipt)? {
+            return Ok(response);
+        }
+        let composition_id: String = transaction.query_row(
+            "SELECT id FROM compositions WHERE project_id = ?1",
+            params![project_id],
+            |row| row.get(0),
+        )?;
+        let composition = load_composition(&transaction, project_id, &composition_id)?;
+        if composition.version != expected_version {
+            return Err(CoreError::StaleWriteConflict {
+                expected: expected_version,
+                current: composition.version,
+            });
+        }
+        let snapshot = CompositionSnapshot::from(&composition);
+        let snapshot_json = serde_json::to_string(&snapshot)?;
+        let previous: Option<(i64, String)> = transaction.query_row(
+            "SELECT revision_number, id FROM revisions WHERE project_id = ?1 ORDER BY revision_number DESC LIMIT 1",
+            params![project_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        ).optional()?;
+        let (revision_number, parent_revision_id) = match previous {
+            Some((number, id)) => (
+                number.checked_add(1).ok_or(CoreError::ArithmeticOverflow)?,
+                Some(id),
+            ),
+            None => (1, None),
+        };
+        let revision = Revision {
+            id: new_id(),
+            project_id: project_id.into(),
+            revision_number,
+            commit_note: commit_note.into(),
+            author: author.into(),
+            content_hash: sha256_hex(snapshot_json.as_bytes()),
+            parent_revision_id,
+            composition_snapshot: snapshot,
+            created_at: now(),
+        };
+        transaction.execute(
+            "INSERT INTO revisions (id, project_id, revision_number, commit_note, author, content_hash, parent_revision_id, composition_snapshot, created_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            params![revision.id, revision.project_id, revision.revision_number, revision.commit_note, revision.author, revision.content_hash, revision.parent_revision_id, snapshot_json, revision.created_at],
+        )?;
+        let response = response(&revision);
+        write_native_receipt(&transaction, receipt, &response)?;
+        transaction.commit()?;
+        Ok(response)
+    }
+
+    pub fn get(&self, project_id: &str, revision_id: &str) -> Result<Revision> {
+        read_revision(&self.database.connection, project_id, revision_id)
+    }
+
+    pub fn list(&self, project_id: &str) -> Result<Vec<Revision>> {
+        ensure_project(&self.database.connection, project_id)?;
+        let mut statement = self.database.connection.prepare(
+            "SELECT id FROM revisions WHERE project_id = ?1 ORDER BY revision_number, id",
+        )?;
+        let rows = statement.query_map(params![project_id], |row| row.get::<_, String>(0))?;
+        let ids = rows.collect::<std::result::Result<Vec<_>, _>>()?;
+        ids.into_iter()
+            .map(|id| read_revision(&self.database.connection, project_id, &id))
+            .collect()
+    }
+
+    /// Restores a snapshot by creating new live timeline rows. Existing revision rows
+    /// are never edited or deleted, and the live version always advances.
+    pub fn restore(
+        &mut self,
+        project_id: &str,
+        composition_id: &str,
+        revision_id: &str,
+        expected_version: i64,
+    ) -> Result<Composition> {
+        if expected_version < 1 {
+            return Err(CoreError::InvalidInput(
+                "expected_version must be positive".into(),
+            ));
+        }
+        let transaction = self
+            .database
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let current = load_composition(&transaction, project_id, composition_id)?;
+        if current.version != expected_version {
+            return Err(CoreError::StaleWriteConflict {
+                expected: expected_version,
+                current: current.version,
+            });
+        }
+        let revision = read_revision(&transaction, project_id, revision_id)?;
+        let snapshot = revision.composition_snapshot;
+        if snapshot.composition_id != composition_id || snapshot.time_base != current.time_base {
+            return Err(CoreError::InvalidInput(
+                "revision snapshot belongs to a different composition or time base".into(),
+            ));
+        }
+        validate_snapshot(&transaction, project_id, composition_id, &snapshot)?;
+        let restored_duration = snapshot_duration(&snapshot)?;
+
+        transaction.execute(
+            "DELETE FROM tracks WHERE composition_id = ?1",
+            params![composition_id],
+        )?;
+        for track in &snapshot.tracks {
+            insert_snapshot_track(&transaction, track)?;
+        }
+        for clip in &snapshot.clips {
+            insert_snapshot_clip(&transaction, clip)?;
+        }
+        let next_version = current
+            .version
+            .checked_add(1)
+            .ok_or(CoreError::ArithmeticOverflow)?;
+        transaction.execute(
+            "UPDATE compositions SET version = ?1, duration_ticks = ?2, updated_at = ?3 WHERE id = ?4 AND project_id = ?5 AND version = ?6",
+            params![next_version, restored_duration, now(), composition_id, project_id, expected_version],
+        )?;
+        let restored = load_composition(&transaction, project_id, composition_id)?;
+        transaction.commit()?;
+        Ok(restored)
+    }
+
+    /// Restores a revision and writes the canonical native response in the same
+    /// transaction. The durable receipt is read before live timeline state, so a
+    /// completed restore replays even after subsequent composition edits.
+    pub fn restore_with_native_receipt(
+        &mut self,
+        project_id: &str,
+        revision_id: &str,
+        expected_version: i64,
+        receipt: &NativeReceipt,
+        response: impl FnOnce(&Revision) -> Value,
+    ) -> Result<Value> {
+        if expected_version < 1 {
+            return Err(CoreError::InvalidInput(
+                "expected_version must be positive".into(),
+            ));
+        }
+        let transaction = self
+            .database
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        if let Some(response) = replay_native_receipt(&transaction, receipt)? {
+            return Ok(response);
+        }
+        let composition_id: String = transaction.query_row(
+            "SELECT id FROM compositions WHERE project_id = ?1",
+            params![project_id],
+            |row| row.get(0),
+        )?;
+        let current = load_composition(&transaction, project_id, &composition_id)?;
+        if current.version != expected_version {
+            return Err(CoreError::StaleWriteConflict {
+                expected: expected_version,
+                current: current.version,
+            });
+        }
+        let revision = read_revision(&transaction, project_id, revision_id)?;
+        let snapshot = revision.composition_snapshot.clone();
+        if snapshot.composition_id != composition_id || snapshot.time_base != current.time_base {
+            return Err(CoreError::InvalidInput(
+                "revision snapshot belongs to a different composition or time base".into(),
+            ));
+        }
+        validate_snapshot(&transaction, project_id, &composition_id, &snapshot)?;
+        let restored_duration = snapshot_duration(&snapshot)?;
+        transaction.execute(
+            "DELETE FROM tracks WHERE composition_id = ?1",
+            params![&composition_id],
+        )?;
+        for track in &snapshot.tracks {
+            insert_snapshot_track(&transaction, track)?;
+        }
+        for clip in &snapshot.clips {
+            insert_snapshot_clip(&transaction, clip)?;
+        }
+        let next_version = current
+            .version
+            .checked_add(1)
+            .ok_or(CoreError::ArithmeticOverflow)?;
+        transaction.execute(
+            "UPDATE compositions SET version = ?1, duration_ticks = ?2, updated_at = ?3 WHERE id = ?4 AND project_id = ?5 AND version = ?6",
+            params![next_version, restored_duration, now(), &composition_id, project_id, expected_version],
+        )?;
+        let response = response(&revision);
+        write_native_receipt(&transaction, receipt, &response)?;
+        transaction.commit()?;
+        Ok(response)
+    }
+}
+
+pub struct JobRepository<'a> {
+    database: &'a mut Database,
+}
+
+impl JobRepository<'_> {
+    pub fn enqueue_render(&mut self, input: &JobEnqueue) -> Result<JobRecord> {
+        validate_job_enqueue(input)?;
+        let transaction = self
+            .database
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let revision = read_revision(&transaction, &input.project_id, &input.revision_id)?;
+        let spec = derive_render_spec(&transaction, &input.project_id, &input.revision_id)?;
+        let input_json = serde_json::to_string(&spec)?;
+        let fingerprint = serde_json::to_vec(&JobFingerprint {
+            project_id: &input.project_id,
+            revision_id: &input.revision_id,
+            revision_content_hash: &revision.content_hash,
+            dependency_job_id: input.dependency_job_id.as_deref(),
+            specification: &spec,
+        })?;
+        let input_digest = sha256_hex(&fingerprint);
+        if let Some(dependency_job_id) = &input.dependency_job_id {
+            let dependency = read_job(&transaction, dependency_job_id)?;
+            if dependency.project_id != input.project_id {
+                return Err(CoreError::InvalidInput(
+                    "job dependency belongs to another project".into(),
+                ));
+            }
+        }
+        let existing: Option<(String, String)> = transaction.query_row(
+            "SELECT id, input_digest FROM jobs WHERE project_id = ?1 AND revision_id = ?2 AND operation_id = ?3",
+            params![input.project_id, input.revision_id, input.operation_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        ).optional()?;
+        if let Some((job_id, existing_digest)) = existing {
+            if existing_digest == input_digest {
+                return read_job(&transaction, &job_id);
+            }
+            return Err(CoreError::IdempotencyConflict {
+                operation_id: input.operation_id.clone(),
+            });
+        }
+        let status = if input.dependency_job_id.is_some() {
+            JobStatus::Waiting
+        } else {
+            JobStatus::Queued
+        };
+        let job_id = new_id();
+        let timestamp = now();
+        transaction.execute(
+            "INSERT INTO jobs (id, project_id, revision_id, operation_id, title, kind, status, input_json, input_digest, config_digest, attempt, lease_token, lease_expires_at, heartbeat_at, stage, progress, error, artifact_path, artifact_sha256, cancel_requested, dependency_job_id, scratch_dir, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, 'render', ?6, ?7, ?8, NULL, 0, NULL, NULL, NULL, 'queued', 0, NULL, NULL, NULL, 0, ?9, NULL, ?10, ?10)",
+            params![job_id, input.project_id, input.revision_id, input.operation_id, format!("Render revision {}", input.revision_id), status.as_str(), input_json, input_digest, input.dependency_job_id, timestamp],
+        )?;
+        let job = read_job(&transaction, &job_id)?;
+        transaction.commit()?;
+        Ok(job)
+    }
+
+    /// Enqueues an immutable render specification and its transport response in
+    /// one transaction. Receipt lookup intentionally precedes revision/spec
+    /// compilation, which otherwise observes mutable project state on replay.
+    pub fn enqueue_render_with_native_receipt(
+        &mut self,
+        input: &JobEnqueue,
+        expected_version: i64,
+        receipt: &NativeReceipt,
+        response: impl FnOnce(&JobRecord) -> Value,
+    ) -> Result<Value> {
+        validate_job_enqueue(input)?;
+        if expected_version < 1 {
+            return Err(CoreError::InvalidInput(
+                "expected_version must be positive".into(),
+            ));
+        }
+        let transaction = self
+            .database
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        if let Some(response) = replay_native_receipt(&transaction, receipt)? {
+            return Ok(response);
+        }
+        let composition_id: String = transaction.query_row(
+            "SELECT id FROM compositions WHERE project_id = ?1",
+            params![input.project_id],
+            |row| row.get(0),
+        )?;
+        let composition = load_composition(&transaction, &input.project_id, &composition_id)?;
+        if composition.version != expected_version {
+            return Err(CoreError::StaleWriteConflict {
+                expected: expected_version,
+                current: composition.version,
+            });
+        }
+        let revision = read_revision(&transaction, &input.project_id, &input.revision_id)?;
+        let spec = derive_render_spec(&transaction, &input.project_id, &input.revision_id)?;
+        let input_json = serde_json::to_string(&spec)?;
+        let fingerprint = serde_json::to_vec(&JobFingerprint {
+            project_id: &input.project_id,
+            revision_id: &input.revision_id,
+            revision_content_hash: &revision.content_hash,
+            dependency_job_id: input.dependency_job_id.as_deref(),
+            specification: &spec,
+        })?;
+        let input_digest = sha256_hex(&fingerprint);
+        let existing: Option<(String, String)> = transaction.query_row(
+            "SELECT id, input_digest FROM jobs WHERE project_id = ?1 AND revision_id = ?2 AND operation_id = ?3",
+            params![input.project_id, input.revision_id, input.operation_id],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        ).optional()?;
+        if let Some((job_id, existing_digest)) = existing {
+            if existing_digest != input_digest {
+                return Err(CoreError::IdempotencyConflict {
+                    operation_id: input.operation_id.clone(),
+                });
+            }
+            let job = read_job(&transaction, &job_id)?;
+            let response = response(&job);
+            write_native_receipt(&transaction, receipt, &response)?;
+            transaction.commit()?;
+            return Ok(response);
+        }
+        if let Some(dependency_job_id) = &input.dependency_job_id {
+            let dependency = read_job(&transaction, dependency_job_id)?;
+            if dependency.project_id != input.project_id {
+                return Err(CoreError::InvalidInput(
+                    "job dependency belongs to another project".into(),
+                ));
+            }
+        }
+        let status = if input.dependency_job_id.is_some() {
+            JobStatus::Waiting
+        } else {
+            JobStatus::Queued
+        };
+        let job_id = new_id();
+        let timestamp = now();
+        transaction.execute(
+            "INSERT INTO jobs (id, project_id, revision_id, operation_id, title, kind, status, input_json, input_digest, config_digest, attempt, lease_token, lease_expires_at, heartbeat_at, stage, progress, error, artifact_path, artifact_sha256, cancel_requested, dependency_job_id, scratch_dir, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5, 'render', ?6, ?7, ?8, NULL, 0, NULL, NULL, NULL, 'queued', 0, NULL, NULL, NULL, 0, ?9, NULL, ?10, ?10)",
+            params![job_id, input.project_id, input.revision_id, input.operation_id, format!("Render revision {}", input.revision_id), status.as_str(), input_json, input_digest, input.dependency_job_id, timestamp],
+        )?;
+        let job = read_job(&transaction, &job_id)?;
+        let response = response(&job);
+        write_native_receipt(&transaction, receipt, &response)?;
+        transaction.commit()?;
+        Ok(response)
+    }
+
+    pub fn get(&self, job_id: &str) -> Result<JobRecord> {
+        read_job(&self.database.connection, job_id)
+    }
+
+    pub fn list(&self, project_id: &str) -> Result<Vec<JobRecord>> {
+        ensure_project(&self.database.connection, project_id)?;
+        let mut statement = self
+            .database
+            .connection
+            .prepare("SELECT id FROM jobs WHERE project_id = ?1 ORDER BY created_at, id")?;
+        let rows = statement.query_map(params![project_id], |row| row.get::<_, String>(0))?;
+        rows.collect::<std::result::Result<Vec<_>, _>>()?
+            .into_iter()
+            .map(|id| read_job(&self.database.connection, &id))
+            .collect()
+    }
+
+    pub fn render_spec(&self, job_id: &str) -> Result<RenderJobSpec> {
+        let job = self.get(job_id)?;
+        if job.kind != "render" || job.revision_id.is_none() {
+            return Err(CoreError::InvalidInput(
+                "job does not contain a durable render specification".into(),
+            ));
+        }
+        let spec: RenderJobSpec = serde_json::from_str(&job.input_json)?;
+        let revision_id = job.revision_id.as_deref().unwrap_or_default();
+        let revision = read_revision(&self.database.connection, &job.project_id, revision_id)?;
+        let fingerprint = serde_json::to_vec(&JobFingerprint {
+            project_id: &job.project_id,
+            revision_id,
+            revision_content_hash: &revision.content_hash,
+            dependency_job_id: job.dependency_job_id.as_deref(),
+            specification: &spec,
+        })?;
+        if sha256_hex(&fingerprint) != job.input_digest {
+            return Err(CoreError::InvalidInput(
+                "stored job input digest does not match canonical input".into(),
+            ));
+        }
+        Ok(spec)
+    }
+
+    pub fn claim_next(&mut self, lease_seconds: i64) -> Result<Option<JobClaim>> {
+        if lease_seconds <= 0 {
+            return Err(CoreError::InvalidInput(
+                "lease_seconds must be positive".into(),
+            ));
+        }
+        let transaction = self
+            .database
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let timestamp = now();
+        transaction.execute(
+            "UPDATE jobs SET status = 'failed', stage = 'dependency_failed', error = 'Dependency did not succeed', updated_at = ?1 WHERE status = 'waiting' AND dependency_job_id IN (SELECT id FROM jobs WHERE status IN ('failed', 'canceled'))",
+            params![timestamp],
+        )?;
+        transaction.execute(
+            "UPDATE jobs SET status = 'queued', stage = 'queued', updated_at = ?1 WHERE status = 'waiting' AND dependency_job_id IN (SELECT id FROM jobs WHERE status = 'succeeded')",
+            params![timestamp],
+        )?;
+        let candidate: Option<String> = transaction.query_row(
+            "SELECT id FROM jobs WHERE status IN ('queued', 'retrying') AND cancel_requested = 0 AND kind = 'render' ORDER BY created_at, id LIMIT 1",
+            [],
+            |row| row.get(0),
+        ).optional()?;
+        let Some(job_id) = candidate else {
+            transaction.commit()?;
+            return Ok(None);
+        };
+        let token = new_id();
+        let lease_expires_at = lease_expiry(lease_seconds)?;
+        let changed = transaction.execute(
+            "UPDATE jobs SET status = 'running', attempt = attempt + 1, lease_token = ?1, lease_expires_at = ?2, heartbeat_at = ?3, stage = 'claimed', progress = 0, updated_at = ?3 WHERE id = ?4 AND status IN ('queued', 'retrying') AND cancel_requested = 0",
+            params![token, lease_expires_at, timestamp, job_id],
+        )?;
+        if changed != 1 {
+            return Err(CoreError::InvalidInput(
+                "job claim lost before transition".into(),
+            ));
+        }
+        let job = read_job(&transaction, &job_id)?;
+        transaction.commit()?;
+        Ok(Some(JobClaim {
+            job,
+            lease_token: token,
+        }))
+    }
+
+    pub fn heartbeat(
+        &mut self,
+        job_id: &str,
+        lease_token: &str,
+        lease_seconds: i64,
+        stage: &str,
+        progress: i64,
+    ) -> Result<bool> {
+        if lease_seconds <= 0 || !(0..=100).contains(&progress) {
+            return Err(CoreError::InvalidInput(
+                "invalid heartbeat lease or progress".into(),
+            ));
+        }
+        require_text(stage, "job stage")?;
+        let timestamp = now();
+        let lease_expires_at = lease_expiry(lease_seconds)?;
+        let changed = self.database.connection.execute(
+            "UPDATE jobs SET heartbeat_at = ?1, lease_expires_at = ?2, stage = ?3, progress = ?4, updated_at = ?1 WHERE id = ?5 AND status = 'running' AND lease_token = ?6 AND cancel_requested = 0 AND lease_expires_at > ?1",
+            params![timestamp, lease_expires_at, stage, progress, job_id, lease_token],
+        )?;
+        Ok(changed == 1)
+    }
+
+    /// Refreshes a lease and stage without inventing progress for an external process.
+    pub fn heartbeat_stage(
+        &mut self,
+        job_id: &str,
+        lease_token: &str,
+        lease_seconds: i64,
+        stage: &str,
+    ) -> Result<bool> {
+        if lease_seconds <= 0 {
+            return Err(CoreError::InvalidInput(
+                "lease_seconds must be positive".into(),
+            ));
+        }
+        require_text(stage, "job stage")?;
+        let timestamp = now();
+        let lease_expires_at = lease_expiry(lease_seconds)?;
+        let changed = self.database.connection.execute(
+            "UPDATE jobs SET heartbeat_at = ?1, lease_expires_at = ?2, stage = ?3, updated_at = ?1 WHERE id = ?4 AND status = 'running' AND lease_token = ?5 AND cancel_requested = 0 AND lease_expires_at > ?1",
+            params![timestamp, lease_expires_at, stage, job_id, lease_token],
+        )?;
+        Ok(changed == 1)
+    }
+
+    pub fn request_cancel(&mut self, job_id: &str) -> Result<JobRecord> {
+        let transaction = self
+            .database
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let job = read_job(&transaction, job_id)?;
+        if matches!(
+            job.status,
+            JobStatus::Succeeded | JobStatus::Failed | JobStatus::Canceled
+        ) {
+            transaction.commit()?;
+            return Ok(job);
+        }
+        let status = if matches!(job.status, JobStatus::Running) {
+            "running"
+        } else {
+            "canceled"
+        };
+        transaction.execute(
+            "UPDATE jobs SET cancel_requested = 1, status = ?1, stage = 'cancel_requested', updated_at = ?2 WHERE id = ?3",
+            params![status, now(), job_id],
+        )?;
+        let updated = read_job(&transaction, job_id)?;
+        transaction.commit()?;
+        Ok(updated)
+    }
+
+    /// Persists cancellation and the exact IPC response together. For a running
+    /// job, signaling the owned child happens after this commit; `cancel_requested`
+    /// is crash-recoverable and startup recovery deterministically finalizes it.
+    pub fn request_cancel_with_native_receipt(
+        &mut self,
+        project_id: &str,
+        job_id: &str,
+        receipt: &NativeReceipt,
+        response: impl FnOnce(&JobRecord) -> Value,
+    ) -> Result<Value> {
+        let transaction = self
+            .database
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        if let Some(response) = replay_native_receipt(&transaction, receipt)? {
+            return Ok(response);
+        }
+        let job = read_job(&transaction, job_id)?;
+        if job.project_id != project_id {
+            return Err(CoreError::JobNotFound(job_id.into()));
+        }
+        let updated = if matches!(
+            job.status,
+            JobStatus::Succeeded | JobStatus::Failed | JobStatus::Canceled
+        ) {
+            job
+        } else {
+            let status = if matches!(job.status, JobStatus::Running) {
+                "running"
+            } else {
+                "canceled"
+            };
+            transaction.execute(
+                "UPDATE jobs SET cancel_requested = 1, status = ?1, stage = 'cancel_requested', updated_at = ?2 WHERE id = ?3",
+                params![status, now(), job_id],
+            )?;
+            read_job(&transaction, job_id)?
+        };
+        let response = response(&updated);
+        write_native_receipt(&transaction, receipt, &response)?;
+        transaction.commit()?;
+        Ok(response)
+    }
+
+    pub fn is_cancel_requested(&self, job_id: &str, lease_token: &str) -> Result<bool> {
+        let value: Option<i64> = self
+            .database
+            .connection
+            .query_row(
+                "SELECT cancel_requested FROM jobs WHERE id = ?1 AND lease_token = ?2",
+                params![job_id, lease_token],
+                |row| row.get(0),
+            )
+            .optional()?;
+        Ok(value.unwrap_or(1) != 0)
+    }
+
+    pub fn set_scratch_dir(
+        &mut self,
+        job_id: &str,
+        lease_token: &str,
+        scratch_dir: &str,
+    ) -> Result<bool> {
+        require_text(scratch_dir, "scratch_dir")?;
+        let changed = self.database.connection.execute(
+            "UPDATE jobs SET scratch_dir = ?1, stage = 'rendering', updated_at = ?2 WHERE id = ?3 AND status = 'running' AND lease_token = ?4",
+            params![scratch_dir, now(), job_id, lease_token],
+        )?;
+        Ok(changed == 1)
+    }
+
+    pub fn finish_success(
+        &mut self,
+        job_id: &str,
+        lease_token: &str,
+        artifact_path: &str,
+        artifact_sha256: &str,
+        config_digest: &str,
+    ) -> Result<bool> {
+        let changed = self.database.connection.execute(
+            "UPDATE jobs SET status = 'succeeded', stage = 'succeeded', progress = 100, artifact_path = ?1, artifact_sha256 = ?2, config_digest = ?3, lease_token = NULL, lease_expires_at = NULL, heartbeat_at = NULL, updated_at = ?4 WHERE id = ?5 AND status = 'running' AND lease_token = ?6 AND cancel_requested = 0 AND lease_expires_at > ?4",
+            params![artifact_path, artifact_sha256, config_digest, now(), job_id, lease_token],
+        )?;
+        Ok(changed == 1)
+    }
+
+    pub fn finish_failure(
+        &mut self,
+        job_id: &str,
+        lease_token: &str,
+        error: &str,
+    ) -> Result<JobRecord> {
+        require_text(error, "job error")?;
+        let transaction = self
+            .database
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let job = read_job(&transaction, job_id)?;
+        let timestamp = now();
+        if job.status != JobStatus::Running
+            || job.lease_token.as_deref() != Some(lease_token)
+            || job
+                .lease_expires_at
+                .as_deref()
+                .is_none_or(|expiry| expiry <= timestamp.as_str())
+        {
+            return Err(CoreError::InvalidInput(
+                "late job completion was fenced by its lease token or expiry".into(),
+            ));
+        }
+        let status = if job.cancel_requested {
+            "canceled"
+        } else {
+            "failed"
+        };
+        transaction.execute(
+            "UPDATE jobs SET status = ?1, stage = ?1, error = ?2, lease_token = NULL, lease_expires_at = NULL, heartbeat_at = NULL, updated_at = ?3 WHERE id = ?4",
+            params![status, error, timestamp, job_id],
+        )?;
+        let updated = read_job(&transaction, job_id)?;
+        transaction.commit()?;
+        Ok(updated)
+    }
+
+    pub fn finalize_canceled(
+        &mut self,
+        job_id: &str,
+        lease_token: &str,
+        reason: &str,
+    ) -> Result<JobRecord> {
+        self.finish_failure(job_id, lease_token, reason)
+    }
+
+    pub fn retry(&mut self, job_id: &str) -> Result<JobRecord> {
+        let transaction = self
+            .database
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let job = read_job(&transaction, job_id)?;
+        if !matches!(job.status, JobStatus::Failed | JobStatus::Canceled) {
+            return Err(CoreError::InvalidInput(
+                "only failed or canceled jobs may retry".into(),
+            ));
+        }
+        let status = if job.dependency_job_id.is_some() {
+            "waiting"
+        } else {
+            "retrying"
+        };
+        transaction.execute(
+            "UPDATE jobs SET status = ?1, cancel_requested = 0, error = NULL, artifact_path = NULL, artifact_sha256 = NULL, config_digest = NULL, lease_token = NULL, lease_expires_at = NULL, heartbeat_at = NULL, stage = 'retrying', progress = 0, scratch_dir = NULL, updated_at = ?2 WHERE id = ?3",
+            params![status, now(), job_id],
+        )?;
+        let updated = read_job(&transaction, job_id)?;
+        transaction.commit()?;
+        Ok(updated)
+    }
+
+    /// Publishes a retry state and its canonical native response atomically.
+    /// Scratch cleanup is deliberately performed by the job engine before this
+    /// method; that cleanup is deterministic and idempotent, while the durable
+    /// state transition itself has no receipt-free crash window.
+    pub fn retry_with_native_receipt(
+        &mut self,
+        project_id: &str,
+        job_id: &str,
+        receipt: &NativeReceipt,
+        response: impl FnOnce(&JobRecord) -> Value,
+    ) -> Result<Value> {
+        let transaction = self
+            .database
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        if let Some(response) = replay_native_receipt(&transaction, receipt)? {
+            return Ok(response);
+        }
+        let job = read_job(&transaction, job_id)?;
+        if job.project_id != project_id {
+            return Err(CoreError::JobNotFound(job_id.into()));
+        }
+        if !matches!(job.status, JobStatus::Failed | JobStatus::Canceled) {
+            return Err(CoreError::InvalidInput(
+                "only failed or canceled jobs may retry".into(),
+            ));
+        }
+        let status = if job.dependency_job_id.is_some() {
+            "waiting"
+        } else {
+            "retrying"
+        };
+        transaction.execute(
+            "UPDATE jobs SET status = ?1, cancel_requested = 0, error = NULL, artifact_path = NULL, artifact_sha256 = NULL, config_digest = NULL, lease_token = NULL, lease_expires_at = NULL, heartbeat_at = NULL, stage = 'retrying', progress = 0, scratch_dir = NULL, updated_at = ?2 WHERE id = ?3",
+            params![status, now(), job_id],
+        )?;
+        let updated = read_job(&transaction, job_id)?;
+        let response = response(&updated);
+        write_native_receipt(&transaction, receipt, &response)?;
+        transaction.commit()?;
+        Ok(response)
+    }
+
+    pub fn recover_stale(&mut self) -> Result<Vec<JobRecord>> {
+        let transaction = self
+            .database
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)?;
+        let timestamp = now();
+        let mut statement = transaction.prepare("SELECT id FROM jobs WHERE status = 'running' AND lease_expires_at IS NOT NULL AND lease_expires_at < ?1")?;
+        let ids = statement
+            .query_map(params![timestamp], |row| row.get::<_, String>(0))?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        drop(statement);
+        for id in &ids {
+            transaction.execute(
+                "UPDATE jobs SET status = CASE WHEN cancel_requested = 1 THEN 'canceled' ELSE 'retrying' END, stage = 'recovery', error = CASE WHEN cancel_requested = 1 THEN 'Cancellation persisted before interruption' ELSE 'Process interrupted / lease expired; retry starts a fresh render' END, lease_token = NULL, lease_expires_at = NULL, heartbeat_at = NULL, updated_at = ?1 WHERE id = ?2 AND status = 'running'",
+                params![timestamp, id],
+            )?;
+        }
+        let recovered = ids
+            .into_iter()
+            .map(|id| read_job(&transaction, &id))
+            .collect::<Result<Vec<_>>>()?;
+        transaction.commit()?;
+        Ok(recovered)
+    }
+}
+
+fn derive_render_spec(
+    connection: &Connection,
+    project_id: &str,
+    revision_id: &str,
+) -> Result<RenderJobSpec> {
+    let revision = read_revision(connection, project_id, revision_id)?;
+    let snapshot = revision.composition_snapshot;
+    if snapshot.tracks.len() != 1 || snapshot.clips.len() != 2 {
+        return Err(CoreError::InvalidInput(
+            "B0 render requires exactly two clips on one track in an immutable revision".into(),
+        ));
+    }
+    let track = &snapshot.tracks[0];
+    if track.kind != "primary_video" || track.is_muted {
+        return Err(CoreError::InvalidInput(
+            "B0 render supports one unmuted primary_video track only".into(),
+        ));
+    }
+    let track_id = &track.id;
+    let mut expected_start = 0_i128;
+    let mut sources = Vec::with_capacity(2);
+    for clip in &snapshot.clips {
+        if &clip.track_id != track_id {
+            return Err(CoreError::InvalidInput(
+                "B0 render rejects multi-track revisions".into(),
+            ));
+        }
+        let start = parse_ticks(&clip.timeline_start_ticks)?;
+        if start != expected_start {
+            return Err(CoreError::InvalidInput(
+                "B0 render rejects timeline gaps, overlaps, and reordered clips".into(),
+            ));
+        }
+        let duration = parse_ticks(&clip.timeline_duration_ticks)?;
+        expected_start = expected_start
+            .checked_add(duration)
+            .ok_or(CoreError::ArithmeticOverflow)?;
+        let asset = read_asset(connection, &clip.asset_id)?;
+        if asset.project_id != project_id {
+            return Err(CoreError::InvalidInput(
+                "revision references an asset outside its project".into(),
+            ));
+        }
+        let expected_sha256 = asset.sha256.ok_or_else(|| {
+            CoreError::InvalidInput("B0 render requires source asset SHA-256 identity".into())
+        })?;
+        let start = RationalTime::new(clip.in_ticks.clone(), asset.duration.time_base.clone())?;
+        let end = RationalTime::new(clip.out_ticks.clone(), asset.duration.time_base.clone())?;
+        sources.push(RenderJobSource {
+            source: asset.path,
+            expected_sha256,
+            start,
+            end,
+        });
+    }
+    let clips: [RenderJobSource; 2] = sources
+        .try_into()
+        .map_err(|_| CoreError::InvalidInput("B0 render requires exactly two clips".into()))?;
+    Ok(RenderJobSpec {
+        project_id: project_id.into(),
+        revision_id: revision_id.into(),
+        clips,
+    })
+}
+
+fn validate_job_enqueue(input: &JobEnqueue) -> Result<()> {
+    let operation = Uuid::parse_str(&input.operation_id)
+        .map_err(|_| CoreError::InvalidInput("operation_id must be a UUIDv4".into()))?;
+    if operation.get_version_num() != 4 {
+        return Err(CoreError::InvalidInput(
+            "operation_id must be a UUIDv4".into(),
+        ));
+    }
+    require_text(&input.project_id, "project_id")?;
+    require_text(&input.revision_id, "revision_id")?;
+    if let Some(dependency) = &input.dependency_job_id {
+        require_text(dependency, "dependency_job_id")?;
+    }
+    Ok(())
+}
+
+#[derive(Serialize)]
+struct JobFingerprint<'a> {
+    project_id: &'a str,
+    revision_id: &'a str,
+    revision_content_hash: &'a str,
+    dependency_job_id: Option<&'a str>,
+    specification: &'a RenderJobSpec,
+}
+
+#[derive(Serialize)]
+struct ReceiptFingerprint<'a> {
+    project_id: &'a str,
+    composition_id: &'a str,
+    expected_version: i64,
+    mutation: &'a CompositionMutation,
+}
+
+fn mutation_digest(
+    project_id: &str,
+    composition_id: &str,
+    expected_version: i64,
+    mutation: &CompositionMutation,
+) -> Result<String> {
+    let bytes = serde_json::to_vec(&ReceiptFingerprint {
+        project_id,
+        composition_id,
+        expected_version,
+        mutation,
+    })?;
+    Ok(sha256_hex(&bytes))
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    Sha256::digest(bytes)
+        .iter()
+        .map(|byte| format!("{:02x}", *byte))
+        .collect()
+}
+
+pub fn now_utc_iso() -> String {
+    now()
+}
+
+fn now() -> String {
+    Utc::now().to_rfc3339_opts(SecondsFormat::Millis, true)
+}
+
+fn lease_expiry(lease_seconds: i64) -> Result<String> {
+    // The durable queue only needs short leases. Bounding public input prevents
+    // chrono duration construction/UTC addition overflow from panicking.
+    if !(1..=86_400).contains(&lease_seconds) {
+        return Err(CoreError::InvalidInput(
+            "lease_seconds must be between 1 and 86400".into(),
+        ));
+    }
+    Utc::now()
+        .checked_add_signed(chrono::Duration::seconds(lease_seconds))
+        .map(|timestamp| timestamp.to_rfc3339_opts(SecondsFormat::Millis, true))
+        .ok_or_else(|| {
+            CoreError::InvalidInput("lease expiry exceeds supported timestamp range".into())
+        })
+}
+
+fn new_id() -> String {
+    Uuid::new_v4().to_string()
+}
+
+fn require_text(value: &str, field: &str) -> Result<()> {
+    if value.trim().is_empty() {
+        return Err(CoreError::InvalidInput(format!("{field} cannot be empty")));
+    }
+    Ok(())
+}
+
+fn validate_project_input(input: &ProjectInput) -> Result<()> {
+    require_text(&input.name, "project name")?;
+    require_text(&input.path, "project path")?;
+    if !matches!(input.aspect_ratio.as_str(), "16:9" | "9:16" | "1:1") {
+        return Err(CoreError::InvalidInput(
+            "aspect_ratio must be 16:9, 9:16, or 1:1".into(),
+        ));
+    }
+    input.fps.validate()
+}
+
+fn validate_asset_input(input: &AssetInput) -> Result<()> {
+    require_text(&input.project_id, "project_id")?;
+    require_text(&input.name, "asset name")?;
+    require_text(&input.path, "asset path")?;
+    require_text(&input.format, "asset format")?;
+    require_text(&input.codec, "asset codec")?;
+    if input.size_bytes < 0 || input.width < 0 || input.height < 0 || input.audio_channels < 0 {
+        return Err(CoreError::InvalidInput(
+            "asset numeric metadata cannot be negative".into(),
+        ));
+    }
+    if !matches!(input.import_type.as_str(), "managed" | "linked") {
+        return Err(CoreError::InvalidInput(
+            "import_type must be managed or linked".into(),
+        ));
+    }
+    input.duration.validate()
+}
+
+fn validate_track_input(track: &TrackInput) -> Result<()> {
+    require_text(&track.label, "track label")?;
+    if let Some(id) = &track.id {
+        require_text(id, "track id")?;
+    }
+    if !matches!(
+        track.kind.as_str(),
+        "primary_video"
+            | "overlay_video"
+            | "dialogue_audio"
+            | "music_audio"
+            | "captions"
+            | "graphics"
+    ) {
+        return Err(CoreError::InvalidInput("unsupported track kind".into()));
+    }
+    Ok(())
+}
+
+fn ensure_project(connection: &Connection, project_id: &str) -> Result<()> {
+    let found: Option<i64> = connection
+        .query_row(
+            "SELECT 1 FROM projects WHERE id = ?1",
+            params![project_id],
+            |row| row.get(0),
+        )
+        .optional()?;
+    found
+        .map(|_| ())
+        .ok_or_else(|| CoreError::ProjectNotFound(project_id.into()))
+}
+
+fn read_project(connection: &Connection, project_id: &str) -> Result<Project> {
+    let row: Option<ProjectRow> = connection.query_row(
+        "SELECT id, name, path, aspect_ratio, fps_numerator, fps_denominator, status, created_at, updated_at FROM projects WHERE id = ?1",
+        params![project_id],
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?, row.get(6)?, row.get(7)?, row.get(8)?)),
+    ).optional()?;
+    let (id, name, path, aspect_ratio, fps_num, fps_den, status, created_at, updated_at) =
+        row.ok_or_else(|| CoreError::ProjectNotFound(project_id.into()))?;
+    Ok(Project {
+        id,
+        name,
+        path,
+        aspect_ratio,
+        fps: RationalTimeBase::new(fps_num, fps_den)?,
+        status,
+        created_at,
+        updated_at,
+    })
+}
+
+fn read_asset(connection: &Connection, asset_id: &str) -> Result<Asset> {
+    let row: Option<AssetRow> = connection.query_row(
+        "SELECT id, project_id, name, path, size_bytes, duration_ticks, timebase_numerator, timebase_denominator, width, height, format, codec, audio_channels, import_type, proxy_status, sha256, created_at FROM assets WHERE id = ?1",
+        params![asset_id],
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?, row.get(6)?, row.get(7)?, row.get(8)?, row.get(9)?, row.get(10)?, row.get(11)?, row.get(12)?, row.get(13)?, row.get(14)?, row.get(15)?, row.get(16)?)),
+    ).optional()?;
+    let (
+        id,
+        project_id,
+        name,
+        path,
+        size_bytes,
+        ticks,
+        tb_num,
+        tb_den,
+        width,
+        height,
+        format,
+        codec,
+        audio_channels,
+        import_type,
+        proxy_status,
+        sha256,
+        created_at,
+    ) = row.ok_or_else(|| CoreError::AssetNotFound(asset_id.into()))?;
+    Ok(Asset {
+        id,
+        project_id,
+        name,
+        path,
+        size_bytes,
+        duration: RationalTime::new(ticks, RationalTimeBase::new(tb_num, tb_den)?)?,
+        width,
+        height,
+        format,
+        codec,
+        audio_channels,
+        import_type,
+        proxy_status,
+        sha256,
+        created_at,
+    })
+}
+
+fn load_composition(
+    connection: &Connection,
+    project_id: &str,
+    composition_id: &str,
+) -> Result<Composition> {
+    let header: Option<(String, String, i64, String, i64, i64, String)> = connection.query_row(
+        "SELECT id, project_id, version, duration_ticks, timebase_numerator, timebase_denominator, updated_at FROM compositions WHERE id = ?1 AND project_id = ?2",
+        params![composition_id, project_id],
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?, row.get(6)?)),
+    ).optional()?;
+    let (id, project_id, version, duration_ticks, num, den, updated_at) =
+        header.ok_or_else(|| CoreError::CompositionNotFound(composition_id.into()))?;
+    if version < 1 {
+        return Err(CoreError::InvalidInput(
+            "stored composition version is invalid".into(),
+        ));
+    }
+    parse_ticks(&duration_ticks)?;
+    let time_base = RationalTimeBase::new(num, den)?;
+    let mut track_statement = connection.prepare("SELECT id, composition_id, kind, label, sort_order, is_muted, is_locked FROM tracks WHERE composition_id = ?1 ORDER BY sort_order, id")?;
+    let track_rows = track_statement.query_map(params![&id], |row| {
+        Ok(Track {
+            id: row.get(0)?,
+            composition_id: row.get(1)?,
+            kind: row.get(2)?,
+            label: row.get(3)?,
+            sort_order: row.get(4)?,
+            is_muted: row.get::<_, i64>(5)? != 0,
+            is_locked: row.get::<_, i64>(6)? != 0,
+        })
+    })?;
+    let tracks = track_rows.collect::<std::result::Result<Vec<_>, _>>()?;
+    let mut clip_statement = connection.prepare("SELECT c.id, c.track_id, c.asset_id, c.name, c.in_ticks, c.out_ticks, c.timeline_start_ticks, c.timeline_duration_ticks, c.sort_order FROM clips c JOIN tracks t ON t.id = c.track_id WHERE t.composition_id = ?1 ORDER BY t.sort_order, c.sort_order, c.id")?;
+    let clip_rows = clip_statement.query_map(params![&id], |row| {
+        Ok(Clip {
+            id: row.get(0)?,
+            track_id: row.get(1)?,
+            asset_id: row.get(2)?,
+            name: row.get(3)?,
+            in_ticks: row.get(4)?,
+            out_ticks: row.get(5)?,
+            timeline_start_ticks: row.get(6)?,
+            timeline_duration_ticks: row.get(7)?,
+            sort_order: row.get(8)?,
+        })
+    })?;
+    let clips = clip_rows.collect::<std::result::Result<Vec<_>, _>>()?;
+    Ok(Composition {
+        id,
+        project_id,
+        version,
+        duration_ticks,
+        time_base,
+        updated_at,
+        tracks,
+        clips,
+    })
+}
+
+fn insert_track(connection: &Connection, composition_id: &str, input: &TrackInput) -> Result<()> {
+    validate_track_input(input)?;
+    let id = input.id.clone().unwrap_or_else(new_id);
+    connection.execute(
+        "INSERT INTO tracks (id, composition_id, kind, label, sort_order, is_muted, is_locked) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![id, composition_id, input.kind, input.label, input.sort_order, i64::from(input.is_muted), i64::from(input.is_locked)],
+    )?;
+    Ok(())
+}
+
+struct AssetTiming {
+    duration_ticks: String,
+    time_base: RationalTimeBase,
+}
+
+fn asset_timing(connection: &Connection, project_id: &str, asset_id: &str) -> Result<AssetTiming> {
+    let row: Option<(String, String, i64, i64)> = connection.query_row(
+        "SELECT project_id, duration_ticks, timebase_numerator, timebase_denominator FROM assets WHERE id = ?1",
+        params![asset_id],
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+    ).optional()?;
+    let (asset_project, duration_ticks, num, den) =
+        row.ok_or_else(|| CoreError::AssetNotFound(asset_id.into()))?;
+    if asset_project != project_id {
+        return Err(CoreError::InvalidInput(
+            "asset belongs to another project".into(),
+        ));
+    }
+    parse_ticks(&duration_ticks)?;
+    Ok(AssetTiming {
+        duration_ticks,
+        time_base: RationalTimeBase::new(num, den)?,
+    })
+}
+
+fn ensure_track_in_composition(
+    connection: &Connection,
+    composition_id: &str,
+    track_id: &str,
+) -> Result<()> {
+    let exists: Option<i64> = connection
+        .query_row(
+            "SELECT 1 FROM tracks WHERE id = ?1 AND composition_id = ?2",
+            params![track_id, composition_id],
+            |row| row.get(0),
+        )
+        .optional()?;
+    exists
+        .map(|_| ())
+        .ok_or_else(|| CoreError::InvalidInput("track does not belong to the composition".into()))
+}
+
+fn normalized_clip(
+    connection: &Connection,
+    project_id: &str,
+    composition_id: &str,
+    composition_time_base: &RationalTimeBase,
+    input: &ClipInput,
+) -> Result<Clip> {
+    require_text(&input.track_id, "track_id")?;
+    require_text(&input.asset_id, "asset_id")?;
+    require_text(&input.name, "clip name")?;
+    ensure_track_in_composition(connection, composition_id, &input.track_id)?;
+    let asset = asset_timing(connection, project_id, &input.asset_id)?;
+    let in_ticks = input.in_time.exact_ticks_in(&asset.time_base)?;
+    let out_ticks = input.out_time.exact_ticks_in(&asset.time_base)?;
+    if parse_ticks(&out_ticks)? <= parse_ticks(&in_ticks)? {
+        return Err(CoreError::InvalidSourceRange {
+            asset_id: input.asset_id.clone(),
+            reason: "out_ticks must be greater than in_ticks".into(),
+        });
+    }
+    if parse_ticks(&out_ticks)? > parse_ticks(&asset.duration_ticks)? {
+        return Err(CoreError::InvalidSourceRange {
+            asset_id: input.asset_id.clone(),
+            reason: "out_ticks exceeds asset duration".into(),
+        });
+    }
+    let timeline_start_ticks = input.timeline_start.exact_ticks_in(composition_time_base)?;
+    let timeline_duration_ticks = input
+        .timeline_duration
+        .exact_ticks_in(composition_time_base)?;
+    if parse_ticks(&timeline_duration_ticks)? == 0 {
+        return Err(CoreError::InvalidInput(
+            "timeline_duration must be greater than zero".into(),
+        ));
+    }
+    let expected_timeline_duration = source_duration_in_composition_ticks(
+        &asset,
+        composition_time_base,
+        &in_ticks,
+        &out_ticks,
+        &input.asset_id,
+    )?;
+    if timeline_duration_ticks != expected_timeline_duration {
+        return Err(CoreError::InvalidSourceRange {
+            asset_id: input.asset_id.clone(),
+            reason: "timeline duration must exactly equal the source range duration in the composition time base".into(),
+        });
+    }
+    Ok(Clip {
+        id: input.id.clone().unwrap_or_else(new_id),
+        track_id: input.track_id.clone(),
+        asset_id: input.asset_id.clone(),
+        name: input.name.clone(),
+        in_ticks,
+        out_ticks,
+        timeline_start_ticks,
+        timeline_duration_ticks,
+        sort_order: input.sort_order,
+    })
+}
+
+fn source_duration_in_composition_ticks(
+    asset: &AssetTiming,
+    composition_time_base: &RationalTimeBase,
+    in_ticks: &str,
+    out_ticks: &str,
+    asset_id: &str,
+) -> Result<String> {
+    let duration = parse_ticks(out_ticks)?
+        .checked_sub(parse_ticks(in_ticks)?)
+        .ok_or_else(|| CoreError::InvalidSourceRange {
+            asset_id: asset_id.into(),
+            reason: "out_ticks must not precede in_ticks".into(),
+        })?;
+    RationalTime::from_ticks(duration, asset.time_base.clone())?
+        .exact_ticks_in(composition_time_base)
+        .map_err(|error| match error {
+            CoreError::InvalidTime(reason) => CoreError::InvalidSourceRange {
+                asset_id: asset_id.into(),
+                reason: format!("source duration cannot be represented exactly in the composition time base: {reason}"),
+            },
+            other => other,
+        })
+}
+
+fn insert_clip(
+    connection: &Connection,
+    project_id: &str,
+    composition_id: &str,
+    time_base: &RationalTimeBase,
+    input: &ClipInput,
+) -> Result<()> {
+    let clip = normalized_clip(connection, project_id, composition_id, time_base, input)?;
+    insert_snapshot_clip(connection, &clip)
+}
+
+fn update_clip(
+    connection: &Connection,
+    project_id: &str,
+    composition_id: &str,
+    time_base: &RationalTimeBase,
+    input: &ClipInput,
+) -> Result<()> {
+    if input.id.is_none() {
+        return Err(CoreError::InvalidInput(
+            "updated clip must provide an id".into(),
+        ));
+    }
+    let clip = normalized_clip(connection, project_id, composition_id, time_base, input)?;
+    let changed = connection.execute(
+        "UPDATE clips SET track_id = ?1, asset_id = ?2, name = ?3, in_ticks = ?4, out_ticks = ?5, timeline_start_ticks = ?6, timeline_duration_ticks = ?7, sort_order = ?8 WHERE id = ?9 AND id IN (SELECT c.id FROM clips c JOIN tracks t ON t.id = c.track_id WHERE t.composition_id = ?10)",
+        params![clip.track_id, clip.asset_id, clip.name, clip.in_ticks, clip.out_ticks, clip.timeline_start_ticks, clip.timeline_duration_ticks, clip.sort_order, clip.id, composition_id],
+    )?;
+    if changed != 1 {
+        return Err(CoreError::InvalidInput(
+            "clip does not belong to the composition".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn remove_clip(connection: &Connection, composition_id: &str, clip_id: &str) -> Result<()> {
+    require_text(clip_id, "clip_id")?;
+    let changed = connection.execute(
+        "DELETE FROM clips WHERE id = ?1 AND track_id IN (SELECT id FROM tracks WHERE composition_id = ?2)",
+        params![clip_id, composition_id],
+    )?;
+    if changed != 1 {
+        return Err(CoreError::InvalidInput(
+            "clip does not belong to the composition".into(),
+        ));
+    }
+    Ok(())
+}
+
+fn recompute_duration(connection: &Connection, composition_id: &str) -> Result<String> {
+    let mut statement = connection.prepare("SELECT c.timeline_start_ticks, c.timeline_duration_ticks FROM clips c JOIN tracks t ON t.id = c.track_id WHERE t.composition_id = ?1")?;
+    let rows = statement.query_map(params![composition_id], |row| {
+        Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+    })?;
+    let mut maximum = 0_i128;
+    for row in rows {
+        let (start, duration) = row?;
+        maximum = maximum.max(parse_ticks(&checked_tick_sum(&start, &duration)?)?);
+    }
+    Ok(maximum.to_string())
+}
+
+fn read_job(connection: &Connection, job_id: &str) -> Result<JobRecord> {
+    let row: Option<JobRow> = connection.query_row(
+        "SELECT id, project_id, revision_id, operation_id, title, kind, status, input_json, input_digest, config_digest, attempt, lease_token, lease_expires_at, heartbeat_at, stage, progress, error, artifact_path, artifact_sha256, cancel_requested, dependency_job_id, scratch_dir, created_at, updated_at FROM jobs WHERE id = ?1",
+        params![job_id],
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?, row.get(6)?, row.get(7)?, row.get(8)?, row.get(9)?, row.get(10)?, row.get(11)?, row.get(12)?, row.get(13)?, row.get(14)?, row.get(15)?, row.get(16)?, row.get(17)?, row.get(18)?, row.get(19)?, row.get(20)?, row.get(21)?, row.get(22)?, row.get(23)?)),
+    ).optional()?;
+    let (
+        id,
+        project_id,
+        revision_id,
+        operation_id,
+        title,
+        kind,
+        status,
+        input_json,
+        input_digest,
+        config_digest,
+        attempt,
+        lease_token,
+        lease_expires_at,
+        heartbeat_at,
+        stage,
+        progress,
+        error,
+        artifact_path,
+        artifact_sha256,
+        cancel_requested,
+        dependency_job_id,
+        scratch_dir,
+        created_at,
+        updated_at,
+    ) = row.ok_or_else(|| CoreError::JobNotFound(job_id.into()))?;
+    Ok(JobRecord {
+        id,
+        project_id,
+        revision_id,
+        operation_id,
+        title,
+        kind,
+        status: JobStatus::parse(&status)?,
+        input_json,
+        input_digest,
+        config_digest,
+        attempt,
+        lease_token,
+        lease_expires_at,
+        heartbeat_at,
+        stage,
+        progress,
+        error,
+        artifact_path,
+        artifact_sha256,
+        cancel_requested: cancel_requested != 0,
+        dependency_job_id,
+        scratch_dir,
+        created_at,
+        updated_at,
+    })
+}
+
+fn read_revision(connection: &Connection, project_id: &str, revision_id: &str) -> Result<Revision> {
+    let row: Option<RevisionRow> = connection.query_row(
+        "SELECT id, project_id, revision_number, commit_note, author, content_hash, parent_revision_id, composition_snapshot, created_at FROM revisions WHERE id = ?1 AND project_id = ?2",
+        params![revision_id, project_id],
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?, row.get(4)?, row.get(5)?, row.get(6)?, row.get(7)?, row.get(8)?)),
+    ).optional()?;
+    let (
+        id,
+        project_id,
+        revision_number,
+        commit_note,
+        author,
+        content_hash,
+        parent_revision_id,
+        snapshot_json,
+        created_at,
+    ) = row.ok_or_else(|| CoreError::RevisionNotFound(revision_id.into()))?;
+    Ok(Revision {
+        id,
+        project_id,
+        revision_number,
+        commit_note,
+        author,
+        content_hash,
+        parent_revision_id,
+        composition_snapshot: serde_json::from_str(&snapshot_json)?,
+        created_at,
+    })
+}
+
+fn validate_snapshot(
+    connection: &Connection,
+    project_id: &str,
+    composition_id: &str,
+    snapshot: &CompositionSnapshot,
+) -> Result<()> {
+    snapshot.time_base.validate()?;
+    let mut track_ids = HashSet::new();
+    for track in &snapshot.tracks {
+        if track.composition_id != composition_id || !track_ids.insert(track.id.as_str()) {
+            return Err(CoreError::InvalidInput(
+                "snapshot has invalid or duplicate tracks".into(),
+            ));
+        }
+        validate_track_input(&TrackInput {
+            id: Some(track.id.clone()),
+            kind: track.kind.clone(),
+            label: track.label.clone(),
+            sort_order: track.sort_order,
+            is_muted: track.is_muted,
+            is_locked: track.is_locked,
+        })?;
+    }
+    let mut clip_ids = HashSet::new();
+    for clip in &snapshot.clips {
+        if !clip_ids.insert(clip.id.as_str()) || !track_ids.contains(clip.track_id.as_str()) {
+            return Err(CoreError::InvalidInput(
+                "snapshot has duplicate clips or clips outside its tracks".into(),
+            ));
+        }
+        require_text(&clip.name, "clip name")?;
+        let asset = asset_timing(connection, project_id, &clip.asset_id)?;
+        let in_ticks = parse_ticks(&clip.in_ticks)?;
+        let out_ticks = parse_ticks(&clip.out_ticks)?;
+        if out_ticks <= in_ticks || out_ticks > parse_ticks(&asset.duration_ticks)? {
+            return Err(CoreError::InvalidSourceRange {
+                asset_id: clip.asset_id.clone(),
+                reason: "snapshot source range is invalid".into(),
+            });
+        }
+        parse_ticks(&clip.timeline_start_ticks)?;
+        if parse_ticks(&clip.timeline_duration_ticks)? == 0 {
+            return Err(CoreError::InvalidInput(
+                "snapshot timeline duration must be greater than zero".into(),
+            ));
+        }
+        let expected_timeline_duration = source_duration_in_composition_ticks(
+            &asset,
+            &snapshot.time_base,
+            &clip.in_ticks,
+            &clip.out_ticks,
+            &clip.asset_id,
+        )?;
+        if clip.timeline_duration_ticks != expected_timeline_duration {
+            return Err(CoreError::InvalidSourceRange {
+                asset_id: clip.asset_id.clone(),
+                reason: "snapshot timeline duration does not match its source range".into(),
+            });
+        }
+    }
+    Ok(())
+}
+
+fn snapshot_duration(snapshot: &CompositionSnapshot) -> Result<String> {
+    let mut maximum = 0_i128;
+    for clip in &snapshot.clips {
+        maximum = maximum.max(parse_ticks(&checked_tick_sum(
+            &clip.timeline_start_ticks,
+            &clip.timeline_duration_ticks,
+        )?)?);
+    }
+    Ok(maximum.to_string())
+}
+
+fn insert_snapshot_track(connection: &Connection, track: &Track) -> Result<()> {
+    connection.execute(
+        "INSERT INTO tracks (id, composition_id, kind, label, sort_order, is_muted, is_locked) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![track.id, track.composition_id, track.kind, track.label, track.sort_order, i64::from(track.is_muted), i64::from(track.is_locked)],
+    )?;
+    Ok(())
+}
+
+fn insert_snapshot_clip(connection: &Connection, clip: &Clip) -> Result<()> {
+    connection.execute(
+        "INSERT INTO clips (id, track_id, asset_id, name, in_ticks, out_ticks, timeline_start_ticks, timeline_duration_ticks, sort_order) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        params![clip.id, clip.track_id, clip.asset_id, clip.name, clip.in_ticks, clip.out_ticks, clip.timeline_start_ticks, clip.timeline_duration_ticks, clip.sort_order],
+    )?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod native_receipt_atomicity_tests {
+    use std::sync::{Arc, Barrier, Mutex};
+
+    use serde_json::json;
+    use tempfile::TempDir;
+    use uuid::Uuid;
+
+    use super::{
+        AssetInput, Database, NativeReceipt, ProjectInput, RationalTime, RationalTimeBase,
+    };
+
+    fn project_input(path: &str) -> ProjectInput {
+        ProjectInput {
+            name: "Atomic receipt project".into(),
+            path: path.into(),
+            aspect_ratio: "16:9".into(),
+            fps: RationalTimeBase::new(24, 1).unwrap(),
+        }
+    }
+
+    fn asset_input(project_id: String) -> AssetInput {
+        AssetInput {
+            project_id,
+            name: "atomic.mp4".into(),
+            path: "/fixtures/atomic.mp4".into(),
+            size_bytes: 1,
+            duration: RationalTime::new("1000", RationalTimeBase::new(1, 1000).unwrap()).unwrap(),
+            width: 1,
+            height: 1,
+            format: "mp4".into(),
+            codec: "h264".into(),
+            audio_channels: 0,
+            import_type: "linked".into(),
+            sha256: Some("a".repeat(64)),
+        }
+    }
+
+    fn receipt(project_id: String) -> NativeReceipt {
+        NativeReceipt::new(
+            Uuid::new_v4().to_string(),
+            "asset.import".into(),
+            Some(project_id),
+            "canonical-request".into(),
+        )
+    }
+
+    #[test]
+    fn native_receipt_write_failure_rolls_back_the_asset_effect() {
+        let directory = TempDir::new().unwrap();
+        let mut database = Database::open(directory.path().join("project.cutroom")).unwrap();
+        let project = database
+            .projects()
+            .create(project_input("/work/native-receipt-rollback"))
+            .unwrap();
+        let input = asset_input(project.id.clone());
+        let receipt = receipt(project.id.clone());
+        database
+            .connection
+            .execute_batch(
+                "CREATE TRIGGER fail_native_receipt BEFORE INSERT ON native_operation_receipts BEGIN SELECT RAISE(ABORT, 'forced receipt failure'); END;",
+            )
+            .unwrap();
+
+        assert!(
+            database
+                .assets()
+                .create_with_native_receipt(input, &receipt, |asset| json!({ "id": asset.id }))
+                .is_err()
+        );
+        assert!(database.assets().list(&project.id).unwrap().is_empty());
+        assert!(matches!(
+            database.native_receipts().lookup(
+                &receipt.operation_id,
+                &receipt.command,
+                receipt.project_id.as_deref(),
+                &receipt.request_hash,
+            ),
+            Ok(super::NativeReceiptLookup::Missing)
+        ));
+    }
+
+    #[test]
+    fn concurrent_native_duplicate_returns_one_asset_and_one_canonical_response() {
+        let directory = TempDir::new().unwrap();
+        let mut database = Database::open(directory.path().join("project.cutroom")).unwrap();
+        let project = database
+            .projects()
+            .create(project_input("/work/native-receipt-concurrent"))
+            .unwrap();
+        let shared = Arc::new(Mutex::new(database));
+        let barrier = Arc::new(Barrier::new(3));
+        let receipt = receipt(project.id.clone());
+        let mut workers = Vec::new();
+        for _ in 0..2 {
+            let shared = Arc::clone(&shared);
+            let barrier = Arc::clone(&barrier);
+            let input = asset_input(project.id.clone());
+            let receipt = receipt.clone();
+            workers.push(std::thread::spawn(move || {
+                barrier.wait();
+                let mut database = shared.lock().unwrap();
+                database
+                    .assets()
+                    .create_with_native_receipt(input, &receipt, |asset| json!({ "id": asset.id }))
+                    .unwrap()["id"]
+                    .as_str()
+                    .unwrap()
+                    .to_owned()
+            }));
+        }
+        barrier.wait();
+        let first = workers.remove(0).join().unwrap();
+        let second = workers.remove(0).join().unwrap();
+        assert_eq!(first, second);
+        let mut database = shared.lock().unwrap();
+        assert_eq!(database.assets().list(&project.id).unwrap().len(), 1);
+    }
+}

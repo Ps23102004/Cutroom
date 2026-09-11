@@ -60,6 +60,17 @@ export function isNativeAvailable(): boolean {
 }
 
 /**
+ * Generates the UUIDv4 operation IDs required by native mutation idempotency.
+ * There is intentionally no timestamp fallback: the core rejects non-UUID IDs.
+ */
+export function createOperationId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  throw new Error('Secure operation ID generation is unavailable in this environment.');
+}
+
+/**
  * Low-level dispatch to Tauri native backend.
  */
 async function invokeTauri<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
@@ -124,4 +135,6 @@ export const NATIVE_COMMANDS = {
   JOB_CANCEL: 'job.cancel',
   JOB_RETRY: 'job.retry',
   HEALTH_GET: 'health.get',
+  BRIEF_GET: 'brief.get',
+  BRIEF_SET: 'brief.set',
 } as const;

@@ -162,6 +162,46 @@ export function mapTimelineToSourceTicks(
 }
 
 /**
+ * Maps a timeline boundary without flooring a fractional source tick.
+ * Edit boundaries must land exactly on the source clock; silently truncating
+ * here would create a different frame than the one the editor selected.
+ */
+export function mapTimelineToSourceTicksExact(
+  playheadTicks: string | bigint,
+  timelineStartTicks: string | bigint,
+  sourceInTicks: string | bigint,
+  compTimeBase: TimeBaseInput = TIMEBASE_24000,
+  sourceTimeBase: TimeBaseInput = TIMEBASE_24000
+): bigint {
+  const ctb = toRational(compTimeBase, 'Composition Timebase');
+  const stb = toRational(sourceTimeBase, 'Source Asset Timebase');
+  const playhead = typeof playheadTicks === 'bigint' ? playheadTicks : BigInt(playheadTicks);
+  const start = typeof timelineStartTicks === 'bigint' ? timelineStartTicks : BigInt(timelineStartTicks);
+  const srcIn = typeof sourceInTicks === 'bigint' ? sourceInTicks : BigInt(sourceInTicks);
+  const delta = playhead - start;
+  if (delta < 0n) throw new Error('Timeline boundary is outside the selected clip');
+
+  const numerator = delta * ctb.num * stb.den;
+  const denominator = ctb.den * stb.num;
+  if (numerator % denominator !== 0n) {
+    throw new Error('Timeline boundary does not map to an exact source tick');
+  }
+  return srcIn + numerator / denominator;
+}
+
+/** Returns the exact integer source/composition ticks represented by one frame. */
+export function ticksPerFrame(timeBase: TimeBaseInput, frameRate: Rational): bigint {
+  const tb = toRational(timeBase, 'Timebase');
+  validateRational(frameRate, 'FrameRate');
+  const numerator = tb.den * frameRate.den;
+  const denominator = tb.num * frameRate.num;
+  if (numerator % denominator !== 0n) {
+    throw new Error('Timebase does not represent an integer number of ticks per frame');
+  }
+  return numerator / denominator;
+}
+
+/**
  * Strict BigInt rational tick delta and arithmetic functions.
  * Ensures no Number or parseFloat conversions are performed in timeline calculations.
  */

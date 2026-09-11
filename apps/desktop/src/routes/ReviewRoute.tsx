@@ -1,18 +1,56 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Button, Card, Tabs, Badge, Input, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell } from '@cutroom/ui';
+import { ClientReviewComment } from '../lib/contracts';
+import { assistClientCommentToPlan, findClipAtTimelineTicks } from '../lib/clientReview';
+import { EditPlan, executeEditPlan } from '../lib/editPlanAssist';
+import { formatRationalTimecode } from '../lib/timecode';
 
-type ReviewSubview = 'packages' | 'comments' | 'proposals' | 'share';
+type ReviewSubview = 'playback_comments' | 'proposals' | 'packages';
 
 export const ReviewRoute: React.FC = () => {
-  const { activeProject, navigate } = useApp();
-  const [activeSubview, setActiveSubview] = useState<ReviewSubview>('packages');
+  const {
+    activeProject,
+    composition,
+    revisions,
+    assets,
+    trimClip,
+    reorderClips,
+    removeClip,
+    addClip,
+    replaceClip,
+    createRevision,
+    navigate,
+  } = useApp();
 
-  // Share package form state
-  const [recipientEmail, setRecipientEmail] = useState('');
-  const [shareNotes, setShareNotes] = useState('');
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [consentConfirmed, setConsentConfirmed] = useState(false);
+  const [activeSubview, setActiveSubview] = useState<ReviewSubview>('playback_comments');
+  const [selectedRevisionId] = useState<string>(revisions[0]?.id ?? '');
+
+  // Timecoded comments state
+  const [comments, setComments] = useState<ClientReviewComment[]>([
+    {
+      id: 'comm-init-1',
+      revisionId: revisions[0]?.id ?? 'rev-1',
+      author: 'Executive Producer',
+      timelineTicks: '24000',
+      comment: 'Cut the awkward pause at the start and tighten pacing.',
+      resolved: false,
+      createdAt: new Date().toISOString(),
+    },
+  ]);
+
+  // New comment entry
+  const [newCommentText, setNewCommentText] = useState('');
+  const [newCommentTicks] = useState('0');
+  const [newCommentAuthor, setNewCommentAuthor] = useState('Client Reviewer');
+
+  // AI Proposal generated from comment
+  const [activePlan, setActivePlan] = useState<EditPlan | null>(null);
+  const [activeCommentId, setActiveCommentId] = useState<string | null>(null);
+  const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
+  const [isApplyingPlan, setIsApplyingPlan] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
+  const [planSuccess, setPlanSuccess] = useState<string | null>(null);
 
   if (!activeProject) {
     return (
@@ -32,11 +70,95 @@ export const ReviewRoute: React.FC = () => {
     );
   }
 
+  const handleAddComment = () => {
+    if (!newCommentText.trim()) return;
+    const newComm: ClientReviewComment = {
+      id: `comm-${Date.now()}`,
+      revisionId: selectedRevisionId || revisions[0]?.id || 'rev-1',
+      author: newCommentAuthor.trim() || 'Client Reviewer',
+      timelineTicks: newCommentTicks.trim() || '0',
+      comment: newCommentText.trim(),
+      resolved: false,
+      createdAt: new Date().toISOString(),
+    };
+    setComments((prev) => [...prev, newComm]);
+    setNewCommentText('');
+  };
+
+  const handleToggleResolve = (id: string) => {
+    setComments((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, resolved: !c.resolved } : c)),
+    );
+  };
+
+  const handleGenerateProposal = async (comment: ClientReviewComment) => {
+    if (!composition) return;
+    setIsGeneratingPlan(true);
+    setPlanError(null);
+    setPlanSuccess(null);
+    setActiveCommentId(comment.id);
+
+    try {
+      const targetClip = findClipAtTimelineTicks(composition, comment.timelineTicks);
+      const res = await assistClientCommentToPlan({
+        comment,
+        composition,
+        targetClip,
+        candidateAssets: assets,
+      });
+
+      if (res.ok) {
+        setActivePlan(res.plan);
+        setActiveSubview('proposals');
+      } else {
+        setPlanError(`Failed to generate edit plan: ${res.error}`);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setPlanError(`Error: ${msg}`);
+    } finally {
+      setIsGeneratingPlan(false);
+    }
+  };
+
+  const handleApplyPlan = async () => {
+    if (!activePlan || !composition) return;
+    setIsApplyingPlan(true);
+    setPlanError(null);
+
+    try {
+      const result = await executeEditPlan(activePlan, {
+        trimClip,
+        reorderClips,
+        removeClip,
+        addClip,
+        replaceClip,
+        createRevision,
+        getCurrentComposition: () => composition,
+        getAssets: () => assets,
+      });
+
+      if (result.success) {
+        setPlanSuccess(`Applied ${result.appliedCount} edit operation(s) and created new revision: "${activePlan.summary}"`);
+        if (activeCommentId) {
+          handleToggleResolve(activeCommentId);
+        }
+        setActivePlan(null);
+      } else {
+        setPlanError(`Plan execution failed: ${result.error}`);
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setPlanError(`Apply failed: ${msg}`);
+    } finally {
+      setIsApplyingPlan(false);
+    }
+  };
+
   const subviewTabs = [
+    { id: 'playback_comments', label: 'Client Feedback & Comments', count: comments.filter(c => !c.resolved).length },
+    { id: 'proposals', label: 'AI Proposed Revisions' },
     { id: 'packages', label: 'Review Packages' },
-    { id: 'comments', label: 'Client Feedback' },
-    { id: 'proposals', label: 'Edit Proposals' },
-    { id: 'share', label: 'Publish Package' },
   ];
 
   return (
@@ -44,211 +166,167 @@ export const ReviewRoute: React.FC = () => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: 'var(--text-primary, #F3F0F6)' }}>
-            Client Review & Feedback Portal
+            Client Review & Timecoded Feedback
           </h1>
           <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
-            Project: <strong>{activeProject.name}</strong> • Timecoded review packages with verified cryptographic revision hashes.
+            Project: <strong>{activeProject.name}</strong> • Timecoded review comments translate into structured AI edit proposals. Client comments never directly mutate the timeline.
           </p>
         </div>
-        <Button variant="primary" onClick={() => setActiveSubview('share')}>
-          Publish Review Package
-        </Button>
       </div>
 
       <Tabs items={subviewTabs} activeId={activeSubview} onChange={(id) => setActiveSubview(id as ReviewSubview)} />
 
-      {/* SUBVIEW 1: Review Packages */}
-      {activeSubview === 'packages' && (
-        <Card padding="md">
-          <h3 style={{ margin: '0 0 14px', fontSize: '15px', color: 'var(--text-primary, #F3F0F6)' }}>
-            Published Review Packages
-          </h3>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeaderCell>Package Name</TableHeaderCell>
-                <TableHeaderCell>Revision SHA-256</TableHeaderCell>
-                <TableHeaderCell>Recipient</TableHeaderCell>
-                <TableHeaderCell>Status</TableHeaderCell>
-                <TableHeaderCell>Actions</TableHeaderCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              <TableRow>
-                <TableCell style={{ fontWeight: 600 }}>Revision 3 Client Cut</TableCell>
-                <TableCell style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '11px', color: 'var(--text-secondary, #BAB3C5)' }}>
-                  sha256:7d793037a076...
-                </TableCell>
-                <TableCell>client@agency.com</TableCell>
-                <TableCell><Badge variant="in_review">In Review</Badge></TableCell>
-                <TableCell>
-                  <Button size="sm" variant="secondary" onClick={() => setActiveSubview('comments')}>
-                    View Comments (2)
-                  </Button>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </Card>
-      )}
-
-      {/* SUBVIEW 2: Client Feedback */}
-      {activeSubview === 'comments' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      {/* SUBVIEW 1: Playback & Comments */}
+      {activeSubview === 'playback_comments' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <Card padding="md">
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span className="font-mono" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--accent-violet, #A18AF7)' }}>
-                  00:00:12:15
-                </span>
-                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
-                  Client Reviewer
-                </span>
-              </div>
-              <Badge variant="draft">Unresolved</Badge>
-            </div>
-            <p style={{ margin: '0 0 10px', fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
-              "The transition between the speaker introduction and the first slide is slightly abrupt. Can we hold the intro 1.5 seconds longer?"
-            </p>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <Button size="sm" variant="primary" onClick={() => setActiveSubview('proposals')}>
-                Convert to Timeline Proposal
-              </Button>
-              <Button size="sm" variant="ghost">
-                Resolve
+            <h3 style={{ margin: '0 0 12px', fontSize: '15px', color: 'var(--text-primary, #F3F0F6)' }}>
+              Add Timecoded Client Feedback
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: '10px', alignItems: 'flex-end' }}>
+              <Input
+                label="Reviewer"
+                value={newCommentAuthor}
+                onChange={(e) => setNewCommentAuthor(e.currentTarget.value)}
+              />
+              <Input
+                label="Comment / Editorial Feedback"
+                placeholder="e.g. Cut the silence at 00:01:00 or swap to B-roll"
+                value={newCommentText}
+                onChange={(e) => setNewCommentText(e.currentTarget.value)}
+              />
+              <Button variant="primary" onClick={handleAddComment}>
+                Add Feedback
               </Button>
             </div>
+          </Card>
+
+          <Card padding="md">
+            <h3 style={{ margin: '0 0 14px', fontSize: '15px', color: 'var(--text-primary, #F3F0F6)' }}>
+              Feedback Notes ({comments.length})
+            </h3>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableHeaderCell>Timecode</TableHeaderCell>
+                  <TableHeaderCell>Reviewer</TableHeaderCell>
+                  <TableHeaderCell>Feedback Note</TableHeaderCell>
+                  <TableHeaderCell>Status</TableHeaderCell>
+                  <TableHeaderCell>AI Action</TableHeaderCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {comments.map((comm) => (
+                  <TableRow key={comm.id}>
+                    <TableCell style={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                      {composition ? formatRationalTimecode(comm.timelineTicks, composition.timeBase) : comm.timelineTicks}
+                    </TableCell>
+                    <TableCell>{comm.author}</TableCell>
+                    <TableCell style={{ color: 'var(--text-primary, #F3F0F6)' }}>{comm.comment}</TableCell>
+                    <TableCell>
+                      <Badge variant={comm.resolved ? 'approved' : 'neutral'}>
+                        {comm.resolved ? 'Resolved' : 'Open'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => handleGenerateProposal(comm)}
+                          isLoading={isGeneratingPlan && activeCommentId === comm.id}
+                        >
+                          Generate AI Plan
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleToggleResolve(comm.id)}
+                        >
+                          {comm.resolved ? 'Reopen' : 'Mark Resolved'}
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </Card>
         </div>
       )}
 
-      {/* SUBVIEW 3: Edit Proposals */}
+      {/* SUBVIEW 2: AI Proposed Revisions */}
       {activeSubview === 'proposals' && (
-        <Card padding="lg">
-          <h3 style={{ margin: '0 0 12px', fontSize: '15px', color: 'var(--text-primary, #F3F0F6)' }}>
-            Bounded Edit Proposals (Confirmation Required)
+        <Card padding="md">
+          <h3 style={{ margin: '0 0 14px', fontSize: '15px', color: 'var(--text-primary, #F3F0F6)' }}>
+            AI Proposed Revision from Client Feedback
           </h3>
-          <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
-            Client comments are converted to verifiable trim and slip proposals. No edit is applied without creator sign-off.
-          </p>
 
-          <div style={{ padding: '14px', backgroundColor: 'var(--bg-raised, #2B2533)', borderRadius: '8px', border: '1px solid var(--border-default, #443B4F)' }}>
-            <div style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary, #F3F0F6)' }}>
-              Proposal: Extend Clip #1 Out-Point by +36 frames (1.50s)
+          {planError && (
+            <div role="alert" style={{ padding: '10px', backgroundColor: 'rgba(224, 108, 117, 0.12)', border: '1px solid var(--destructive, #E06C75)', borderRadius: '6px', color: 'var(--destructive, #E06C75)', marginBottom: '12px' }}>
+              {planError}
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)', marginTop: '4px' }}>
-              Origin: Client comment at 00:00:12:15 • Ripple downstream clips by +36 frames
+          )}
+
+          {planSuccess && (
+            <div role="status" style={{ padding: '10px', backgroundColor: 'rgba(167, 215, 161, 0.12)', border: '1px solid var(--positive, #A7D7A1)', borderRadius: '6px', color: 'var(--positive, #A7D7A1)', marginBottom: '12px' }}>
+              {planSuccess}
             </div>
-            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-              <Button size="sm" variant="primary" onClick={() => navigate('studio')}>
-                Audition in Studio
-              </Button>
-              <Button size="sm" variant="ghost">
-                Decline
-              </Button>
+          )}
+
+          {activePlan ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ padding: '12px', backgroundColor: 'var(--bg-raised, #2B2533)', borderRadius: '8px', border: '1px solid var(--border-default, #443B4F)' }}>
+                <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary, #F3F0F6)', marginBottom: '4px' }}>
+                  Summary: {activePlan.summary}
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+                  Target Composition Version: {activePlan.expectedVersion} • Operations: {activePlan.operations.length}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {activePlan.operations.map((op, i) => (
+                  <div key={i} style={{ padding: '8px 12px', backgroundColor: 'var(--bg-panel, #221E29)', borderRadius: '6px', fontSize: '12px', borderLeft: '3px solid var(--accent, #9D7BFF)' }}>
+                    <strong>Step {i + 1} ({op.kind}):</strong> {op.reason}
+                  </div>
+                ))}
+              </div>
+
+              <div role="note" style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)', borderTop: '1px solid var(--border-subtle, #362F40)', paddingTop: '8px' }}>
+                Human approval required. Applying will execute native timeline operations and create a verified revision. Original source media remains unmodified.
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '6px' }}>
+                <Button variant="primary" onClick={handleApplyPlan} isLoading={isApplyingPlan}>
+                  Approve & Apply AI Revision
+                </Button>
+                <Button variant="ghost" onClick={() => setActivePlan(null)} disabled={isApplyingPlan}>
+                  Dismiss Proposal
+                </Button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary, #BAB3C5)' }}>
+              No active proposal. Select a client comment from the "Client Feedback" tab and click "Generate AI Plan".
+            </div>
+          )}
         </Card>
       )}
 
-      {/* SUBVIEW 4: Share Dialog & Security Sheet (NO GENERIC CLOUD SYNC) */}
-      {activeSubview === 'share' && (
-        <Card padding="lg">
-          <h3 style={{ margin: '0 0 8px', fontSize: '16px', color: 'var(--text-primary, #F3F0F6)' }}>
-            Publish Review Package — Explicit Security Sheet
+      {/* SUBVIEW 3: Review Packages */}
+      {activeSubview === 'packages' && (
+        <Card padding="lg" style={{ textAlign: 'center', borderStyle: 'dashed' }}>
+          <h3 style={{ margin: '0 0 8px', fontSize: '15px', color: 'var(--text-primary, #F3F0F6)' }}>
+            Review Share Packages
           </h3>
-          <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
-            Cutroom enforces local-first boundaries. Review the data disclosure sheet below before publishing.
+          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
+            Exported review copies and timecoded web-review share links will be tracked here.
           </p>
-
-          {/* Security Sheet Box */}
-          <div
-            style={{
-              padding: '16px',
-              backgroundColor: 'var(--bg-app, #19161F)',
-              border: '1px solid var(--border-strong, #635773)',
-              borderRadius: '8px',
-              marginBottom: '20px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px',
-              fontSize: '12px',
-            }}
-          >
-            <div style={{ fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
-              DATA LEAVING LOCAL MACHINE:
-            </div>
-            <div style={{ color: 'var(--text-secondary, #BAB3C5)' }}>
-              • Lightweight 720p H.264 review proxy video (watermarked).
-            </div>
-            <div style={{ color: 'var(--text-secondary, #BAB3C5)' }}>
-              • Timecode index and speech transcript text.
-            </div>
-            <div style={{ color: 'var(--text-secondary, #BAB3C5)' }}>
-              • Cryptographic SHA-256 manifest hash: <code>sha256:7d793037a076...</code>
-            </div>
-            <div style={{ fontWeight: 600, color: 'var(--positive, #A7D7A1)', marginTop: '4px' }}>
-              STRICTLY KEPT LOCAL (NEVER UPLOADED):
-            </div>
-            <div style={{ color: 'var(--text-secondary, #BAB3C5)' }}>
-              ✓ Original master camera media and raw audio recordings.
-            </div>
-            <div style={{ color: 'var(--text-secondary, #BAB3C5)' }}>
-              ✓ Full SQLite project database and application settings.
-            </div>
-            <div style={{ color: 'var(--text-secondary, #BAB3C5)' }}>
-              ✓ Local AI model weights and cached execution plans.
-            </div>
-          </div>
-
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              setIsPublishing(true);
-              setTimeout(() => {
-                setIsPublishing(false);
-                setActiveSubview('packages');
-              }, 600);
-            }}
-            style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
-          >
-            <Input
-              label="Recipient Client Email"
-              type="email"
-              placeholder="client@company.com"
-              value={recipientEmail}
-              onChange={(e) => setRecipientEmail(e.target.value)}
-              required
-            />
-            <Input
-              label="Delivery Instructions / Notes"
-              placeholder="e.g. Please review pacing on Section 2."
-              value={shareNotes}
-              onChange={(e) => setShareNotes(e.target.value)}
-            />
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <input
-                type="checkbox"
-                id="consent-check"
-                checked={consentConfirmed}
-                onChange={(e) => setConsentConfirmed(e.target.checked)}
-                required
-              />
-              <label htmlFor="consent-check" style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)', cursor: 'pointer' }}>
-                I have reviewed the security sheet and authorize publishing the review proxy package.
-              </label>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
-              <Button type="button" variant="ghost" onClick={() => setActiveSubview('packages')}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary" disabled={!consentConfirmed || !recipientEmail.trim()} isLoading={isPublishing}>
-                Publish Package
-              </Button>
-            </div>
-          </form>
         </Card>
       )}
     </div>
   );
 };
+
+export default ReviewRoute;

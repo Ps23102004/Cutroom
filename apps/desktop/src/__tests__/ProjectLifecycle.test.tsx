@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { AppProvider, useApp } from '../context/AppContext';
+import { FIXTURE_COMPOSITION, FIXTURE_PROJECT } from '../lib/fixtures';
 
 describe('Project Lifecycle & Native Contract Enforcement', () => {
   beforeEach(() => {
@@ -117,13 +118,13 @@ describe('Project Lifecycle & Native Contract Enforcement', () => {
         invoke: async <T,>(cmd: string, args?: Record<string, unknown>): Promise<T> => {
           expect(cmd).toBe('dispatch');
           const req = args?.request as { command: string; payload: Record<string, unknown> };
-          if (req.command === 'project.create') {
+          if (req.command === 'project.create' || req.command === 'project.open') {
             return {
               ok: true,
               data: {
                 id: 'proj-native-001',
-                name: req.payload.name,
-                path: req.payload.path,
+                name: req.payload.name || 'Native Authoritative Project',
+                path: req.payload.path || '/workspace/projects/native_01',
                 fpsNumerator: 24,
                 fpsDenominator: 1,
                 aspectRatio: '16:9',
@@ -134,6 +135,11 @@ describe('Project Lifecycle & Native Contract Enforcement', () => {
               },
             } as T;
           }
+          if (req.command === 'asset.list' || req.command === 'revision.list' || req.command === 'job.list') {
+            return { ok: true, data: [] } as T;
+          }
+          if (req.command === 'composition.get') return { ok: true, data: null } as T;
+          if (req.command === 'health.get' || req.command === 'project.list') return { ok: true, data: [] } as T;
           throw new Error(`Unhandled mock command: ${req.command}`);
         },
       },
@@ -218,6 +224,11 @@ describe('Project Lifecycle & Native Contract Enforcement', () => {
       wrapper: ({ children }) => <AppProvider>{children}</AppProvider>,
     });
 
+    act(() => {
+      result.current.setActiveProject(FIXTURE_PROJECT);
+      result.current.setComposition({ ...FIXTURE_COMPOSITION, version: 1 });
+    });
+
     let caughtError: unknown;
     await act(async () => {
       try {
@@ -230,7 +241,7 @@ describe('Project Lifecycle & Native Contract Enforcement', () => {
     expect(caughtError).toBeDefined();
     expect((caughtError as { code?: string })?.code).toBe('VERSION_CONFLICT');
     expect(result.current.lastError).toContain('Expected composition version 1');
-    expect(result.current.composition).toBeNull();
+    expect(result.current.composition?.version).toBe(1);
   });
 
   it('strictly enforces no invented asset metadata by binding to authoritative native response', async () => {
@@ -259,7 +270,7 @@ describe('Project Lifecycle & Native Contract Enforcement', () => {
         invoke: async <T,>(cmd: string, args?: Record<string, unknown>): Promise<T> => {
           expect(cmd).toBe('dispatch');
           const req = args?.request as { command: string };
-          if (req.command === 'project.create') {
+          if (req.command === 'project.create' || req.command === 'project.open') {
             return {
               ok: true,
               data: {
@@ -276,6 +287,11 @@ describe('Project Lifecycle & Native Contract Enforcement', () => {
               },
             } as T;
           }
+          if (req.command === 'asset.list' || req.command === 'revision.list' || req.command === 'job.list') {
+            return { ok: true, data: [] } as T;
+          }
+          if (req.command === 'composition.get') return { ok: true, data: null } as T;
+          if (req.command === 'health.get' || req.command === 'project.list') return { ok: true, data: [] } as T;
           if (req.command === 'asset.import') {
             return {
               ok: true,
