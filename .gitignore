@@ -12,3 +12,8 @@ docs/evidence/raw/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+# Local tool state, not part of the source.
+.impeccable/
+# Editor/tool backup files.
+*.bak
+*.bak-*

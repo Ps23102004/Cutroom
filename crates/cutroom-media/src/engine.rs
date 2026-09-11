@@ -19,8 +19,8 @@ use crate::{
     RenderArtifact, Result, SourceRange, TwoClipRenderRequest, VideoProbe,
 };
 
-const FFMPEG_PATH: &str = "/opt/homebrew/bin/ffmpeg";
-const FFPROBE_PATH: &str = "/opt/homebrew/bin/ffprobe";
+const HOMEBREW_FFMPEG: &str = "/opt/homebrew/bin/ffmpeg";
+const HOMEBREW_FFPROBE: &str = "/opt/homebrew/bin/ffprobe";
 const OUTPUT_WIDTH: u32 = 1920;
 const OUTPUT_HEIGHT: u32 = 1080;
 const OUTPUT_FRAME_RATE_NUMERATOR: i64 = 24;
@@ -46,26 +46,74 @@ impl CancellationToken {
     }
 }
 
-/// Fixed local media adapter. Executable paths are intentionally not configurable.
+/// Precedence: explicit env override -> PATH -> Homebrew fallback.
+fn resolve_media_executable(binary: &str, env_override: &str, fallback: &str) -> Result<PathBuf> {
+    if let Some(dir) = std::env::var_os(env_override).filter(|v| !v.is_empty()) {
+        let candidate = PathBuf::from(dir);
+        if is_regular_file(&candidate) {
+            return Ok(candidate);
+        }
+        return Err(MediaError::InvalidInput(format!(
+            "media executable override {env_override} does not point at a regular file: {}",
+            candidate.display()
+        )));
+    }
+    if let Some(path) = find_on_path(binary) {
+        return Ok(path);
+    }
+    let fallback = PathBuf::from(fallback);
+    if is_regular_file(&fallback) {
+        return Ok(fallback);
+    }
+    Err(MediaError::InvalidInput(format!(
+        "required media executable `{binary}` was not found: set {env_override}, put `{binary}` on PATH, or install it at {}",
+        fallback.display()
+    )))
+}
+
+fn find_on_path(binary: &str) -> Option<PathBuf> {
+    let file_name = if cfg!(windows) {
+        format!("{binary}.exe")
+    } else {
+        binary.to_string()
+    };
+    std::env::var_os("PATH").and_then(|paths| {
+        std::env::split_paths(&paths)
+            .map(|dir| dir.join(&file_name))
+            .find(|candidate| is_regular_file(candidate))
+    })
+}
+
+fn is_regular_file(path: &Path) -> bool {
+    fs::metadata(path).map(|m| m.is_file()).unwrap_or(false)
+}
+
+/// Local media adapter. The ffmpeg/ffprobe pair resolves once at construction:
+/// an explicit `CUTROOM_FFMPEG` / `CUTROOM_FFPROBE` override wins, then `PATH`,
+/// then the Homebrew default. Resolution is fail-closed: a missing or
+/// non-regular executable is an error, never a silent fallback.
 #[derive(Clone, Debug)]
-pub struct MediaEngine;
+pub struct MediaEngine {
+    ffmpeg: PathBuf,
+    ffprobe: PathBuf,
+}
 
 impl MediaEngine {
-    /// Creates the B0 engine using the locally provisioned Homebrew FFmpeg tools.
-    pub fn homebrew() -> Result<Self> {
-        for executable in [FFMPEG_PATH, FFPROBE_PATH] {
-            let metadata = fs::metadata(executable).map_err(|error| {
-                MediaError::InvalidInput(format!(
-                    "required media executable is unavailable at {executable}: {error}"
-                ))
-            })?;
-            if !metadata.is_file() {
-                return Err(MediaError::InvalidInput(format!(
-                    "required media executable is not a regular file: {executable}"
-                )));
-            }
-        }
-        Ok(Self)
+    /// Resolves the local ffmpeg/ffprobe pair (see struct docs for precedence).
+    pub fn discover() -> Result<Self> {
+        let ffmpeg = resolve_media_executable("ffmpeg", "CUTROOM_FFMPEG", HOMEBREW_FFMPEG)?;
+        let ffprobe = resolve_media_executable("ffprobe", "CUTROOM_FFPROBE", HOMEBREW_FFPROBE)?;
+        Ok(Self { ffmpeg, ffprobe })
+    }
+
+    /// Absolute path of the resolved ffmpeg executable.
+    pub fn ffmpeg_path(&self) -> &Path {
+        &self.ffmpeg
+    }
+
+    /// Absolute path of the resolved ffprobe executable.
+    pub fn ffprobe_path(&self) -> &Path {
+        &self.ffprobe
     }
 
     /// Probes a regular local media file and returns exact stream timing plus its SHA-256.
@@ -159,7 +207,7 @@ impl MediaEngine {
     ) -> Result<MediaProbe> {
         let demuxer = source_demuxer(source)?;
         let output = run_command(
-            Command::new(FFPROBE_PATH)
+            Command::new(&self.ffprobe)
                 .arg("-v")
                 .arg("error")
                 .arg("-protocol_whitelist")
@@ -189,7 +237,7 @@ impl MediaEngine {
         let has_audio = clips[0].probe.audio.is_some();
         let first_demuxer = source_demuxer(&clips[0].source)?;
         let second_demuxer = source_demuxer(&clips[1].source)?;
-        let mut command = Command::new(FFMPEG_PATH);
+        let mut command = Command::new(&self.ffmpeg);
         command
             .arg("-hide_banner")
             .arg("-nostdin")
@@ -236,7 +284,7 @@ impl MediaEngine {
 
     fn strict_decode(&self, artifact: &Path, cancellation: &CancellationToken) -> Result<()> {
         run_command(
-            Command::new(FFMPEG_PATH)
+            Command::new(&self.ffmpeg)
                 .arg("-hide_banner")
                 .arg("-nostdin")
                 .arg("-v")
