@@ -107,6 +107,11 @@ Archive & Persistence (Reopenable SQLite Registry)
 - Rust stable toolchain & Cargo
 - FFmpeg & FFprobe (installed at `/opt/homebrew/bin` or in `PATH`)
 - Local Ollama running `gemma4:e4b-mlx` (for live AI smoke tests)
+- Linux only: Tauri system libraries (the desktop shell will not compile without them)
+  ```bash
+  sudo apt-get install libwebkit2gtk-4.1-dev build-essential curl wget file \
+    libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+  ```
 
 ### Build & Test Suite
 
