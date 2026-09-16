@@ -141,10 +141,10 @@ export const EditPlanProposalPanel: React.FC<EditPlanProposalPanelProps> = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+      <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
         AI Assembly & Edit Plan
       </h4>
-      <div style={{ fontSize: '11px', color: 'var(--text-secondary, #BAB3C5)' }}>
+      <div style={{ fontSize: '11px', color: 'var(--text-secondary, #C2BCCC)' }}>
         Local model: {modelLabel}. Generates structured multi-operation plans. Preview before applying.
       </div>
 
@@ -184,7 +184,7 @@ export const EditPlanProposalPanel: React.FC<EditPlanProposalPanelProps> = ({
               style={{
                 fontSize: '11px',
                 fontWeight: 600,
-                color: 'var(--text-secondary, #BAB3C5)',
+                color: 'var(--text-secondary, #C2BCCC)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
               }}
@@ -192,7 +192,7 @@ export const EditPlanProposalPanel: React.FC<EditPlanProposalPanelProps> = ({
               PROPOSED EDIT PLAN ({plan.operations.length} STEPS)
             </div>
 
-            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
               {plan.summary}
             </div>
 
@@ -205,7 +205,7 @@ export const EditPlanProposalPanel: React.FC<EditPlanProposalPanelProps> = ({
                     flexDirection: 'column',
                     gap: '2px',
                     padding: '6px 8px',
-                    backgroundColor: 'var(--bg-panel, #221E29)',
+                    backgroundColor: 'var(--bg-panel, #0F0F16)',
                     borderRadius: '6px',
                     fontSize: '11px',
                   }}
@@ -218,13 +218,13 @@ export const EditPlanProposalPanel: React.FC<EditPlanProposalPanelProps> = ({
                         fontWeight: 600,
                         fontSize: '10px',
                         textTransform: 'uppercase',
-                        backgroundColor: 'var(--bg-raised, #2B2533)',
-                        color: 'var(--accent, #9D7BFF)',
+                        backgroundColor: 'var(--bg-raised, #17171F)',
+                        color: 'var(--accent-violet, #C4B5FD)',
                       }}
                     >
                       {idx + 1}. {op.kind}
                     </span>
-                    <span style={{ color: 'var(--text-primary, #F3F0F6)' }}>
+                    <span style={{ color: 'var(--text-primary, #FAF8FF)' }}>
                       {op.kind === 'trim' && `Clip "${op.clipId}" (${op.newInTicks} → ${op.newOutTicks})`}
                       {op.kind === 'reorder' && `Clip "${op.clipId}" move ${op.direction}`}
                       {op.kind === 'delete' && `Clip "${op.clipId}" remove`}
@@ -232,7 +232,7 @@ export const EditPlanProposalPanel: React.FC<EditPlanProposalPanelProps> = ({
                       {op.kind === 'replace' && `Clip "${op.targetClipId}" with asset "${op.replacementAssetId}"`}
                     </span>
                   </div>
-                  <div style={{ color: 'var(--text-secondary, #BAB3C5)', paddingLeft: '4px' }}>
+                  <div style={{ color: 'var(--text-secondary, #C2BCCC)', paddingLeft: '4px' }}>
                     {op.reason}
                   </div>
                 </div>
@@ -244,8 +244,8 @@ export const EditPlanProposalPanel: React.FC<EditPlanProposalPanelProps> = ({
               data-testid="edit-plan-media-safe"
               style={{
                 fontSize: '11px',
-                color: 'var(--text-tertiary-panel, #9A91A7)',
-                borderTop: '1px solid var(--border-subtle, #362F40)',
+                color: 'var(--text-tertiary-panel, #9D95B0)',
+                borderTop: '1px solid var(--border-subtle, #1E1E2A)',
                 paddingTop: '6px',
               }}
             >

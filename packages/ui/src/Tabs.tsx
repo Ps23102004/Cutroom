@@ -29,7 +29,7 @@ export const Tabs: React.FC<TabsProps> = ({
         display: 'flex',
         alignItems: 'center',
         gap: '4px',
-        borderBottom: '1px solid var(--border-subtle, #362F40)',
+        borderBottom: '1px solid var(--border-subtle, #1E1E2A)',
         paddingBottom: '2px',
         ...style,
       }}
@@ -54,8 +54,8 @@ export const Tabs: React.FC<TabsProps> = ({
               fontWeight: 500,
               background: 'transparent',
               border: 'none',
-              borderBottom: isActive ? '2px solid var(--accent-violet, #A18AF7)' : '2px solid transparent',
-              color: isActive ? 'var(--text-primary, #F3F0F6)' : 'var(--text-secondary, #BAB3C5)',
+              borderBottom: isActive ? '2px solid var(--accent-violet, #C4B5FD)' : '2px solid transparent',
+              color: isActive ? 'var(--text-primary, #FAF8FF)' : 'var(--text-secondary, #C2BCCC)',
               cursor: tab.disabled ? 'not-allowed' : 'pointer',
               opacity: tab.disabled ? 0.4 : 1,
               transition: 'all 150ms ease',
@@ -72,9 +72,9 @@ export const Tabs: React.FC<TabsProps> = ({
                   padding: '1px 6px',
                   borderRadius: '9999px',
                   backgroundColor: isActive
-                    ? 'var(--accent-violet-subtle, rgba(161, 138, 247, 0.14))'
+                    ? 'var(--accent-violet-subtle, rgba(196, 181, 253, 0.14))'
                     : 'rgba(255, 255, 255, 0.06)',
-                  color: isActive ? 'var(--accent-violet, #A18AF7)' : 'var(--text-tertiary, #877E94)',
+                  color: isActive ? 'var(--accent-violet, #C4B5FD)' : 'var(--text-tertiary, #8E87A0)',
                 }}
               >
                 {tab.count}

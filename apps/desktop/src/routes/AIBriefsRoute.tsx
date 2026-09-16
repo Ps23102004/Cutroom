@@ -140,10 +140,10 @@ export const AIBriefsRoute: React.FC = () => {
     return (
       <div style={{ maxWidth: '600px', margin: '40px auto' }}>
         <Card padding="lg" style={{ textAlign: 'center' }}>
-          <h2 style={{ margin: '0 0 8px', fontSize: '18px', color: 'var(--text-primary, #F3F0F6)' }}>
+          <h2 style={{ margin: '0 0 8px', fontSize: '18px', color: 'var(--text-primary, #FAF8FF)' }}>
             AI Briefs Requires Active Project
           </h2>
-          <p style={{ margin: '0 0 20px', fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
+          <p style={{ margin: '0 0 20px', fontSize: '13px', color: 'var(--text-secondary, #C2BCCC)' }}>
             AI briefs operate on project media and transcripts. Please select or create a project first.
           </p>
           <Button variant="primary" onClick={() => navigate('home')}>
@@ -164,10 +164,10 @@ export const AIBriefsRoute: React.FC = () => {
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div>
-        <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: 'var(--text-primary, #F3F0F6)' }}>
+        <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: 'var(--text-primary, #FAF8FF)' }}>
           AI Briefs & Guided Assembly
         </h1>
-        <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
+        <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary, #C2BCCC)' }}>
           Project: <strong>{activeProject.name}</strong> • Define structured intent, verified source intervals, and review bounded recipe runs.
         </p>
       </div>
@@ -177,14 +177,14 @@ export const AIBriefsRoute: React.FC = () => {
       {/* SUBVIEW 1: Brief Editor */}
       {activeSubview === 'editor' && (
         <Card padding="lg">
-          <h3 style={{ margin: '0 0 16px', fontSize: '16px', color: 'var(--text-primary, #F3F0F6)' }}>
+          <h3 style={{ margin: '0 0 16px', fontSize: '16px', color: 'var(--text-primary, #FAF8FF)' }}>
             Intent & Boundary Constraints
           </h3>
 
           {/* AI Brief Assist */}
-          <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: 'var(--bg-app, #19161F)', borderRadius: '10px', border: '1px solid var(--border-subtle, #362F40)' }}>
+          <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: 'var(--bg-app, #08080C)', borderRadius: '10px', border: '1px solid var(--border-subtle, #1E1E2A)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-              <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+              <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
                 AI Brief Assist
               </span>
               {aiAvailable === true && (
@@ -197,7 +197,7 @@ export const AIBriefsRoute: React.FC = () => {
                 <Badge variant="neutral">Checking…</Badge>
               )}
             </div>
-            <p style={{ margin: '0 0 10px', fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+            <p style={{ margin: '0 0 10px', fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
               Describe what you want in plain language. The local AI will propose brief changes for your review.
             </p>
             <div style={{ display: 'flex', gap: '8px' }}>
@@ -212,9 +212,9 @@ export const AIBriefsRoute: React.FC = () => {
                   flex: 1,
                   padding: '8px 12px',
                   fontSize: '13px',
-                  backgroundColor: 'var(--bg-raised, #2B2533)',
-                  color: 'var(--text-primary, #F3F0F6)',
-                  border: '1px solid var(--border-subtle, #362F40)',
+                  backgroundColor: 'var(--bg-raised, #17171F)',
+                  color: 'var(--text-primary, #FAF8FF)',
+                  border: '1px solid var(--border-subtle, #1E1E2A)',
                   borderRadius: '6px',
                   outline: 'none',
                 }}
@@ -238,11 +238,11 @@ export const AIBriefsRoute: React.FC = () => {
 
           {/* AI Proposal Preview */}
           {aiProposal && (
-            <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: 'var(--bg-raised, #2B2533)', borderRadius: '10px', border: '2px solid var(--accent-violet, #7C3AED)' }}>
-              <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)', marginBottom: '12px' }}>
+            <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: 'var(--bg-raised, #17171F)', borderRadius: '10px', border: '2px solid var(--accent-violet, #7C3AED)' }}>
+              <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)', marginBottom: '12px' }}>
                 AI Proposal — Review Before Accepting
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
                 <div><strong>Goal:</strong> {aiProposal.goal}</div>
                 <div><strong>Audience:</strong> {aiProposal.audience}</div>
                 <div><strong>Duration:</strong> {aiProposal.targetDurationSeconds}s</div>
@@ -335,7 +335,7 @@ export const AIBriefsRoute: React.FC = () => {
               </div>
             )}
             {saveSuccess && (
-              <div style={{ color: 'var(--accent-green, #98C379)', fontSize: '13px' }}>
+              <div style={{ color: 'var(--positive, #A7D7A1)', fontSize: '13px' }}>
                 ✓ Brief constraints saved to project.
               </div>
             )}
@@ -355,39 +355,39 @@ export const AIBriefsRoute: React.FC = () => {
       {activeSubview === 'plan' && (
         <Card padding="lg">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary, #F3F0F6)' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary, #FAF8FF)' }}>
               Execution Plan Proposal
             </h3>
             <Badge variant="violet">Pending Media Engine</Badge>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ padding: '12px', backgroundColor: 'var(--bg-app, #19161F)', borderRadius: '8px', fontSize: '13px' }}>
-              <div style={{ fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>Model & Tooling Identity</div>
-              <div style={{ color: 'var(--text-secondary, #BAB3C5)', marginTop: '4px' }}>
+            <div style={{ padding: '12px', backgroundColor: 'var(--bg-app, #08080C)', borderRadius: '8px', fontSize: '13px' }}>
+              <div style={{ fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>Model & Tooling Identity</div>
+              <div style={{ color: 'var(--text-secondary, #C2BCCC)', marginTop: '4px' }}>
                 {aiAvailable === true
                   ? 'AI Runtime Model: gemma4:e2b-mlx (local Ollama). Inference bounded to permitted schemas.'
                   : 'AI Runtime Model: None active. Start Ollama with gemma4:e2b-mlx to enable local inference.'}
               </div>
             </div>
 
-            <div style={{ padding: '12px', backgroundColor: 'var(--bg-app, #19161F)', borderRadius: '8px', fontSize: '13px' }}>
-              <div style={{ fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>Step 1: Ingest & ASR Verification</div>
-              <div style={{ color: 'var(--text-secondary, #BAB3C5)', marginTop: '4px' }}>
+            <div style={{ padding: '12px', backgroundColor: 'var(--bg-app, #08080C)', borderRadius: '8px', fontSize: '13px' }}>
+              <div style={{ fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>Step 1: Ingest & ASR Verification</div>
+              <div style={{ color: 'var(--text-secondary, #C2BCCC)', marginTop: '4px' }}>
                 Local transcription scan validates word-level alignment across imported takes.
               </div>
             </div>
 
-            <div style={{ padding: '12px', backgroundColor: 'var(--bg-app, #19161F)', borderRadius: '8px', fontSize: '13px' }}>
-              <div style={{ fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>Step 2: Constraint Verification</div>
-              <div style={{ color: 'var(--text-secondary, #BAB3C5)', marginTop: '4px' }}>
+            <div style={{ padding: '12px', backgroundColor: 'var(--bg-app, #08080C)', borderRadius: '8px', fontSize: '13px' }}>
+              <div style={{ fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>Step 2: Constraint Verification</div>
+              <div style={{ color: 'var(--text-secondary, #C2BCCC)', marginTop: '4px' }}>
                 Exclusion filter flags confidential segment [00:01:10 - 00:01:45] as strictly masked.
               </div>
             </div>
 
-            <div style={{ padding: '12px', backgroundColor: 'var(--bg-app, #19161F)', borderRadius: '8px', fontSize: '13px' }}>
-              <div style={{ fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>Step 3: Timeline Assembly Proposal</div>
-              <div style={{ color: 'var(--text-secondary, #BAB3C5)', marginTop: '4px' }}>
+            <div style={{ padding: '12px', backgroundColor: 'var(--bg-app, #08080C)', borderRadius: '8px', fontSize: '13px' }}>
+              <div style={{ fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>Step 3: Timeline Assembly Proposal</div>
+              <div style={{ color: 'var(--text-secondary, #C2BCCC)', marginTop: '4px' }}>
                 Proposes sequence of 4 clips targeting {targetDuration}s runtime. Requires editor confirmation.
               </div>
             </div>
@@ -398,14 +398,14 @@ export const AIBriefsRoute: React.FC = () => {
       {/* SUBVIEW 3: Source Selections */}
       {activeSubview === 'sources' && (
         <Card padding="lg">
-          <h3 style={{ margin: '0 0 12px', fontSize: '16px', color: 'var(--text-primary, #F3F0F6)' }}>
+          <h3 style={{ margin: '0 0 12px', fontSize: '16px', color: 'var(--text-primary, #FAF8FF)' }}>
             Source Selection Intervals
           </h3>
-          <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
+          <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--text-secondary, #C2BCCC)' }}>
             Inspected source intervals grounded in local transcript evidence.
           </p>
-          <div style={{ padding: '24px', textAlign: 'center', border: '1px dashed var(--border-subtle, #362F40)', borderRadius: '8px' }}>
-            <span style={{ fontSize: '13px', color: 'var(--text-tertiary, #877E94)' }}>
+          <div style={{ padding: '24px', textAlign: 'center', border: '1px dashed var(--border-subtle, #1E1E2A)', borderRadius: '8px' }}>
+            <span style={{ fontSize: '13px', color: 'var(--text-tertiary, #8E87A0)' }}>
               Source interval extraction active in background worker. Available candidates will be listed here with playable thumbnails.
             </span>
           </div>
@@ -416,18 +416,18 @@ export const AIBriefsRoute: React.FC = () => {
       {activeSubview === 'recipes' && (
         <Card padding="lg">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-            <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary, #F3F0F6)' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary, #FAF8FF)' }}>
               Recipe Runs & Receipts
             </h3>
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>Scope: Suggest / Draft / Approved Recipe</span>
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>Scope: Suggest / Draft / Approved Recipe</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <div style={{ padding: '12px', backgroundColor: 'var(--bg-raised, #2B2533)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '12px', backgroundColor: 'var(--bg-raised, #17171F)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+                <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
                   Rough Cut Assembly Recipe
                 </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
                   Status: Ready to execute • Scope: Suggest (non-destructive)
                 </div>
               </div>

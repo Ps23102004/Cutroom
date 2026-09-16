@@ -66,10 +66,10 @@ export const HomeRoute: React.FC = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
           <Cutline size={72} />
           <div>
-            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 700, color: 'var(--text-primary, #F3F0F6)' }}>
+            <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 700, color: 'var(--text-primary, #FAF8FF)' }}>
               Workspace Overview
             </h1>
-            <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
+            <p style={{ margin: '6px 0 0', fontSize: '13px', color: 'var(--text-secondary, #C2BCCC)' }}>
               Your projects, recent work, and tasks needing attention.
             </p>
           </div>
@@ -122,7 +122,7 @@ export const HomeRoute: React.FC = () => {
               <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--destructive, #E06C75)' }}>
                 {failedJobs.length} Background Task{failedJobs.length > 1 ? 's' : ''} Failed
               </div>
-              <div style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
                 {failedJobs[0]?.title}: {failedJobs[0]?.error || 'Process failed during execution.'}
               </div>
             </div>
@@ -139,7 +139,7 @@ export const HomeRoute: React.FC = () => {
           raised
           padding="lg"
           style={{
-            borderColor: 'var(--border-strong, #635773)',
+            borderColor: 'var(--border-strong, #3D3D55)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -147,16 +147,16 @@ export const HomeRoute: React.FC = () => {
         >
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-              <span style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 700, color: 'var(--accent-violet, #A18AF7)', letterSpacing: '0.06em' }}>
+              <span style={{ fontSize: '11px', textTransform: 'uppercase', fontWeight: 700, color: 'var(--accent-violet, #C4B5FD)', letterSpacing: '0.06em' }}>
                 Active Project
               </span>
               <Badge variant={activeProject.status}>{activeProject.status.toUpperCase()}</Badge>
               {activeProject.isFixture && <Badge variant="fixture">Fixture</Badge>}
             </div>
-            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+            <h2 style={{ margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
               {activeProject.name}
             </h2>
-            <div style={{ display: 'flex', gap: '16px', marginTop: '6px', fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+            <div style={{ display: 'flex', gap: '16px', marginTop: '6px', fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
               <span>Location: {activeProject.path}</span>
               <span>Format: {activeProject.aspectRatio} @ {activeProject.fpsNumerator}fps</span>
               <span>Revisions: {activeProject.revisionCount}</span>
@@ -177,10 +177,10 @@ export const HomeRoute: React.FC = () => {
       {/* Recent Projects Section */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-          <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+          <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
             Recent Projects
           </h3>
-          <span style={{ fontSize: '12px', color: 'var(--text-tertiary, #877E94)' }}>
+          <span style={{ fontSize: '12px', color: 'var(--text-tertiary, #8E87A0)' }}>
             {projects.length} project{projects.length !== 1 ? 's' : ''} found
           </span>
         </div>
@@ -195,10 +195,10 @@ export const HomeRoute: React.FC = () => {
               borderStyle: 'dashed',
             }}
           >
-            <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+            <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
               No projects created yet
             </h4>
-            <p style={{ margin: '8px auto 20px', maxWidth: '440px', fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)', lineHeight: 1.5 }}>
+            <p style={{ margin: '8px auto 20px', maxWidth: '440px', fontSize: '13px', color: 'var(--text-secondary, #C2BCCC)', lineHeight: 1.5 }}>
               Cutroom starts with a clean, empty workspace. Create your first project to begin importing audio/video recordings and generating speech transcripts.
             </p>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
@@ -222,8 +222,8 @@ export const HomeRoute: React.FC = () => {
                   display: 'block',
                   width: '100%',
                   textAlign: 'left',
-                  backgroundColor: 'var(--bg-panel, #221E29)',
-                  border: '1px solid var(--border-default, #443B4F)',
+                  backgroundColor: 'var(--bg-panel, #0F0F16)',
+                  border: '1px solid var(--border-default, #2A2A3A)',
                   borderRadius: '12px',
                   padding: '16px',
                   cursor: 'pointer',
@@ -233,12 +233,12 @@ export const HomeRoute: React.FC = () => {
                 onClick={() => void handleOpenProject(proj.id)}
               >
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' }}>
-                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+                  <h4 style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
                     {proj.name}
                   </h4>
                   <Badge variant={proj.status}>{proj.status}</Badge>
                 </div>
-                <div style={{ margin: '8px 0', fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+                <div style={{ margin: '8px 0', fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
                   {proj.path}
                 </div>
                 <div
@@ -247,9 +247,9 @@ export const HomeRoute: React.FC = () => {
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     fontSize: '11px',
-                    color: 'var(--text-tertiary, #877E94)',
+                    color: 'var(--text-tertiary, #8E87A0)',
                     paddingTop: '8px',
-                    borderTop: '1px solid var(--border-subtle, #362F40)',
+                    borderTop: '1px solid var(--border-subtle, #1E1E2A)',
                   }}
                 >
                   <span>{proj.aspectRatio} • {proj.fpsNumerator} fps</span>
@@ -265,10 +265,10 @@ export const HomeRoute: React.FC = () => {
       <Card padding="md">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary, #BAB3C5)' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary, #C2BCCC)' }}>
               LOCAL SYSTEM STATUS
             </span>
-            <div style={{ fontSize: '13px', color: 'var(--text-primary, #F3F0F6)', marginTop: '2px' }}>
+            <div style={{ fontSize: '13px', color: 'var(--text-primary, #FAF8FF)', marginTop: '2px' }}>
               {isNativeConnected ? 'Desktop engine connected.' : 'Browser preview — desktop engine unavailable.'}
             </div>
           </div>
@@ -308,7 +308,7 @@ export const HomeRoute: React.FC = () => {
             required
             autoFocus
           />
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
             The desktop native folder picker will choose and authorize the project storage directory. Browser preview reports native-unavailable.
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>

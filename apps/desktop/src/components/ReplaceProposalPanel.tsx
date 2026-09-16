@@ -186,14 +186,14 @@ export const ReplaceProposalPanel: React.FC<ReplaceProposalPanelProps> = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+      <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
         AI Edit Proposal &mdash; Replace
       </h4>
-      <div style={{ fontSize: '11px', color: 'var(--text-secondary, #BAB3C5)' }}>
+      <div style={{ fontSize: '11px', color: 'var(--text-secondary, #C2BCCC)' }}>
         Local model: {modelLabel}. Swaps the clip's source in place and ripples later clips. Original media is never modified.
       </div>
 
-      <div style={{ fontSize: '12px', color: 'var(--text-primary, #F3F0F6)' }}>
+      <div style={{ fontSize: '12px', color: 'var(--text-primary, #FAF8FF)' }}>
         <strong>Selected clip:</strong> {clip.name}
       </div>
 
@@ -215,7 +215,7 @@ export const ReplaceProposalPanel: React.FC<ReplaceProposalPanelProps> = ({
       </Button>
 
       {assets.length === 0 && (
-        <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>
+        <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)' }}>
           Import a replacement asset first — AI can only replace from assets already in this project.
         </div>
       )}
@@ -239,23 +239,23 @@ export const ReplaceProposalPanel: React.FC<ReplaceProposalPanelProps> = ({
               style={{
                 fontSize: '11px',
                 fontWeight: 600,
-                color: 'var(--text-secondary, #BAB3C5)',
+                color: 'var(--text-secondary, #C2BCCC)',
                 textTransform: 'uppercase',
                 letterSpacing: '0.05em',
               }}
             >
               AI Edit Proposal &mdash; Replace
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-primary, #F3F0F6)' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-primary, #FAF8FF)' }}>
               <strong>CURRENT:</strong> {preview.currentClip}
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-primary, #F3F0F6)' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-primary, #FAF8FF)' }}>
               <strong>REPLACE WITH:</strong> {preview.replaceWith}
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
               <strong>DURATION CHANGE:</strong> {preview.durationChange}
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
               <strong>REASON:</strong> {preview.reason}
             </div>
 
@@ -265,8 +265,8 @@ export const ReplaceProposalPanel: React.FC<ReplaceProposalPanelProps> = ({
               data-testid="replace-media-safe"
               style={{
                 fontSize: '11px',
-                color: 'var(--text-tertiary-panel, #9A91A7)',
-                borderTop: '1px solid var(--border-subtle, #362F40)',
+                color: 'var(--text-tertiary-panel, #9D95B0)',
+                borderTop: '1px solid var(--border-subtle, #1E1E2A)',
                 paddingTop: '6px',
               }}
             >

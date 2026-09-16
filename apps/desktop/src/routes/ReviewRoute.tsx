@@ -56,10 +56,10 @@ export const ReviewRoute: React.FC = () => {
     return (
       <div style={{ maxWidth: '600px', margin: '40px auto' }}>
         <Card padding="lg" style={{ textAlign: 'center' }}>
-          <h2 style={{ margin: '0 0 8px', fontSize: '18px', color: 'var(--text-primary, #F3F0F6)' }}>
+          <h2 style={{ margin: '0 0 8px', fontSize: '18px', color: 'var(--text-primary, #FAF8FF)' }}>
             Review Requires Active Project
           </h2>
-          <p style={{ margin: '0 0 20px', fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
+          <p style={{ margin: '0 0 20px', fontSize: '13px', color: 'var(--text-secondary, #C2BCCC)' }}>
             Review packages and feedback threads are bound to a specific project. Please select or create a project.
           </p>
           <Button variant="primary" onClick={() => navigate('home')}>
@@ -165,10 +165,10 @@ export const ReviewRoute: React.FC = () => {
     <div style={{ maxWidth: '1080px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: 'var(--text-primary, #F3F0F6)' }}>
+          <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: 'var(--text-primary, #FAF8FF)' }}>
             Client Review & Timecoded Feedback
           </h1>
-          <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
+          <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary, #C2BCCC)' }}>
             Project: <strong>{activeProject.name}</strong> • Timecoded review comments translate into structured AI edit proposals. Client comments never directly mutate the timeline.
           </p>
         </div>
@@ -180,7 +180,7 @@ export const ReviewRoute: React.FC = () => {
       {activeSubview === 'playback_comments' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <Card padding="md">
-            <h3 style={{ margin: '0 0 12px', fontSize: '15px', color: 'var(--text-primary, #F3F0F6)' }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: '15px', color: 'var(--text-primary, #FAF8FF)' }}>
               Add Timecoded Client Feedback
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: '10px', alignItems: 'flex-end' }}>
@@ -202,7 +202,7 @@ export const ReviewRoute: React.FC = () => {
           </Card>
 
           <Card padding="md">
-            <h3 style={{ margin: '0 0 14px', fontSize: '15px', color: 'var(--text-primary, #F3F0F6)' }}>
+            <h3 style={{ margin: '0 0 14px', fontSize: '15px', color: 'var(--text-primary, #FAF8FF)' }}>
               Feedback Notes ({comments.length})
             </h3>
             <Table>
@@ -222,7 +222,7 @@ export const ReviewRoute: React.FC = () => {
                       {composition ? formatRationalTimecode(comm.timelineTicks, composition.timeBase) : comm.timelineTicks}
                     </TableCell>
                     <TableCell>{comm.author}</TableCell>
-                    <TableCell style={{ color: 'var(--text-primary, #F3F0F6)' }}>{comm.comment}</TableCell>
+                    <TableCell style={{ color: 'var(--text-primary, #FAF8FF)' }}>{comm.comment}</TableCell>
                     <TableCell>
                       <Badge variant={comm.resolved ? 'approved' : 'neutral'}>
                         {comm.resolved ? 'Resolved' : 'Open'}
@@ -258,7 +258,7 @@ export const ReviewRoute: React.FC = () => {
       {/* SUBVIEW 2: AI Proposed Revisions */}
       {activeSubview === 'proposals' && (
         <Card padding="md">
-          <h3 style={{ margin: '0 0 14px', fontSize: '15px', color: 'var(--text-primary, #F3F0F6)' }}>
+          <h3 style={{ margin: '0 0 14px', fontSize: '15px', color: 'var(--text-primary, #FAF8FF)' }}>
             AI Proposed Revision from Client Feedback
           </h3>
 
@@ -276,24 +276,24 @@ export const ReviewRoute: React.FC = () => {
 
           {activePlan ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div style={{ padding: '12px', backgroundColor: 'var(--bg-raised, #2B2533)', borderRadius: '8px', border: '1px solid var(--border-default, #443B4F)' }}>
-                <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary, #F3F0F6)', marginBottom: '4px' }}>
+              <div style={{ padding: '12px', backgroundColor: 'var(--bg-raised, #17171F)', borderRadius: '8px', border: '1px solid var(--border-default, #2A2A3A)' }}>
+                <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary, #FAF8FF)', marginBottom: '4px' }}>
                   Summary: {activePlan.summary}
                 </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
                   Target Composition Version: {activePlan.expectedVersion} • Operations: {activePlan.operations.length}
                 </div>
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {activePlan.operations.map((op, i) => (
-                  <div key={i} style={{ padding: '8px 12px', backgroundColor: 'var(--bg-panel, #221E29)', borderRadius: '6px', fontSize: '12px', borderLeft: '3px solid var(--accent, #9D7BFF)' }}>
+                  <div key={i} style={{ padding: '8px 12px', backgroundColor: 'var(--bg-panel, #0F0F16)', borderRadius: '6px', fontSize: '12px', borderLeft: '3px solid var(--accent-violet, #C4B5FD)' }}>
                     <strong>Step {i + 1} ({op.kind}):</strong> {op.reason}
                   </div>
                 ))}
               </div>
 
-              <div role="note" style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)', borderTop: '1px solid var(--border-subtle, #362F40)', paddingTop: '8px' }}>
+              <div role="note" style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)', borderTop: '1px solid var(--border-subtle, #1E1E2A)', paddingTop: '8px' }}>
                 Human approval required. Applying will execute native timeline operations and create a verified revision. Original source media remains unmodified.
               </div>
 
@@ -307,7 +307,7 @@ export const ReviewRoute: React.FC = () => {
               </div>
             </div>
           ) : (
-            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary, #BAB3C5)' }}>
+            <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary, #C2BCCC)' }}>
               No active proposal. Select a client comment from the "Client Feedback" tab and click "Generate AI Plan".
             </div>
           )}
@@ -317,10 +317,10 @@ export const ReviewRoute: React.FC = () => {
       {/* SUBVIEW 3: Review Packages */}
       {activeSubview === 'packages' && (
         <Card padding="lg" style={{ textAlign: 'center', borderStyle: 'dashed' }}>
-          <h3 style={{ margin: '0 0 8px', fontSize: '15px', color: 'var(--text-primary, #F3F0F6)' }}>
+          <h3 style={{ margin: '0 0 8px', fontSize: '15px', color: 'var(--text-primary, #FAF8FF)' }}>
             Review Share Packages
           </h3>
-          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
+          <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary, #C2BCCC)' }}>
             Exported review copies and timecoded web-review share links will be tracked here.
           </p>
         </Card>

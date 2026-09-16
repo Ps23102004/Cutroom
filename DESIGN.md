@@ -2,20 +2,20 @@
 name: Cutroom
 description: A focused editing workspace organized around the creator's next task.
 colors:
-  accent-violet: "#A18AF7"
+  accent-violet: "#C4B5FD"
   ochre: "#D6AE69"
   maroon: "#713D50"
   sky: "#8CC8E8"
   positive: "#A7D7A1"
   destructive: "#E06C75"
-  bg-app: "#19161F"
-  bg-panel: "#221E29"
-  bg-raised: "#2B2533"
-  bg-glass: "rgba(34, 30, 41, 0.78)"
-  border-default: "#443B4F"
-  text-primary: "#F3F0F6"
-  text-secondary: "#BAB3C5"
-  text-inverse: "#191320"
+  bg-app: "#08080C"
+  bg-panel: "#0F0F16"
+  bg-raised: "#17171F"
+  bg-glass: "rgba(15, 15, 22, 0.78)"
+  border-default: "#2A2A3A"
+  text-primary: "#FAF8FF"
+  text-secondary: "#C2BCCC"
+  text-inverse: "#0B0A10"
 typography:
   body: {fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif', fontSize: "14px", lineHeight: 1.43}
   timecode: {fontFamily: 'ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Monaco, Consolas, monospace'}
@@ -33,7 +33,7 @@ components:
 
 Snapshot: 2026-09-07. The user's desktop contract is visual authority, reflected in `PRODUCT.md` and the direction comment in `apps/desktop/index.html`; no generated page composition defines this system.
 
-The implemented React shell uses charcoal/plum surfaces, compact system typography and restrained violet actions. Matte content remains readable while translucent navigation supplies depth. This document captures a frontend foundation; native editing, persistence and delivery remain unimplemented. Current validation and pending final verification belong in `docs/TEST_EVIDENCE.md`.
+The implemented React shell uses near-black violet-noir surfaces, compact system typography and restrained light-violet actions. Matte content remains readable while translucent navigation supplies depth. This document captures a frontend foundation; native editing, persistence and delivery remain unimplemented. Current validation and pending final verification belong in `docs/TEST_EVIDENCE.md`.
 
 ## Colors
 

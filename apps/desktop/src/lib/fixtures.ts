@@ -92,7 +92,7 @@ export const FIXTURE_COMPOSITION: Composition = {
       outTicks: '7200',
       timelineStartTicks: '0',
       timelineDurationTicks: '7200',
-      color: '#A18AF7',
+      color: '#C4B5FD',
       isFixture: true,
     },
     {
@@ -104,7 +104,7 @@ export const FIXTURE_COMPOSITION: Composition = {
       outTicks: '24000',
       timelineStartTicks: '7200',
       timelineDurationTicks: '14400',
-      color: '#A18AF7',
+      color: '#C4B5FD',
       isFixture: true,
     },
     {

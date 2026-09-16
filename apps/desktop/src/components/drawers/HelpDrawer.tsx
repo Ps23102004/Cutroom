@@ -59,7 +59,7 @@ export const HelpDrawer: React.FC = () => {
 
         {/* Keyboard Shortcuts Section */}
         <div>
-          <h4 style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #BAB3C5)' }}>
+          <h4 style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #C2BCCC)' }}>
             KEYBOARD SHORTCUTS
           </h4>
           <Card padding="sm">
@@ -74,14 +74,14 @@ export const HelpDrawer: React.FC = () => {
                     fontSize: '12px',
                   }}
                 >
-                  <span style={{ color: 'var(--text-secondary, #BAB3C5)' }}>{sc.action}</span>
+                  <span style={{ color: 'var(--text-secondary, #C2BCCC)' }}>{sc.action}</span>
                   <kbd
                     style={{
                       padding: '2px 6px',
                       borderRadius: '4px',
-                      backgroundColor: 'var(--bg-app, #19161F)',
-                      border: '1px solid var(--border-default, #443B4F)',
-                      color: 'var(--accent-violet, #A18AF7)',
+                      backgroundColor: 'var(--bg-app, #08080C)',
+                      border: '1px solid var(--border-default, #2A2A3A)',
+                      color: 'var(--accent-violet, #C4B5FD)',
                       fontSize: '11px',
                       fontFamily: 'var(--font-mono, monospace)',
                     }}
@@ -96,16 +96,16 @@ export const HelpDrawer: React.FC = () => {
 
         {/* Documentation Articles */}
         <div>
-          <h4 style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #BAB3C5)' }}>
+          <h4 style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary, #C2BCCC)' }}>
             KNOWLEDGE BASE
           </h4>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {filteredArticles.map((art, idx) => (
               <Card key={idx} padding="sm">
-                <h5 style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+                <h5 style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
                   {art.title}
                 </h5>
-                <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)', lineHeight: 1.5 }}>
+                <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)', lineHeight: 1.5 }}>
                   {art.body}
                 </p>
               </Card>

@@ -109,10 +109,10 @@ export const ProjectsRoute: React.FC = () => {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: 'var(--text-primary, #F3F0F6)' }}>
+          <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: 'var(--text-primary, #FAF8FF)' }}>
             Projects & Media Management
           </h1>
-          <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
+          <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary, #C2BCCC)' }}>
             {activeProject ? `Managing: ${activeProject.name}` : 'Select a project to inspect source media and briefs.'}
           </p>
         </div>
@@ -161,11 +161,11 @@ export const ProjectsRoute: React.FC = () => {
 
           {projects.length === 0 ? (
             <Card padding="lg" style={{ textAlign: 'center', borderStyle: 'dashed' }}>
-              <FolderIcon size={32} style={{ color: 'var(--text-tertiary-panel, #9A91A7)', margin: '0 auto 8px' }} />
-              <h3 style={{ margin: 0, fontSize: '15px', color: 'var(--text-primary, #F3F0F6)' }}>
+              <FolderIcon size={32} style={{ color: 'var(--text-tertiary-panel, #9D95B0)', margin: '0 auto 8px' }} />
+              <h3 style={{ margin: 0, fontSize: '15px', color: 'var(--text-primary, #FAF8FF)' }}>
                 No projects found
               </h3>
-              <p style={{ margin: '6px 0 16px', fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
+              <p style={{ margin: '6px 0 16px', fontSize: '13px', color: 'var(--text-secondary, #C2BCCC)' }}>
                 Create a project to manage audio/video recordings and project briefs.
               </p>
               <Button variant="primary" onClick={() => setIsNewProjectModalOpen(true)}>
@@ -190,9 +190,9 @@ export const ProjectsRoute: React.FC = () => {
                   .map((p) => {
                     const isCurrent = activeProject?.id === p.id;
                     return (
-                      <TableRow key={p.id} style={{ backgroundColor: isCurrent ? 'var(--accent-violet-subtle, rgba(161, 138, 247, 0.08))' : undefined }}>
+                      <TableRow key={p.id} style={{ backgroundColor: isCurrent ? 'var(--accent-violet-subtle, rgba(196, 181, 253, 0.08))' : undefined }}>
                         <TableCell style={{ fontWeight: 600 }}>{p.name}</TableCell>
-                        <TableCell style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+                        <TableCell style={{ fontFamily: 'var(--font-mono, monospace)', fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
                           {p.path}
                         </TableCell>
                         <TableCell>{p.aspectRatio} @ {p.fpsNumerator}fps</TableCell>
@@ -238,37 +238,37 @@ export const ProjectsRoute: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
             <Card padding="md">
-              <h3 style={{ margin: '0 0 12px', fontSize: '15px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+              <h3 style={{ margin: '0 0 12px', fontSize: '15px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
                 Deliverable Constraints & Brief
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary, #BAB3C5)' }}>Target Master:</span>
+                  <span style={{ color: 'var(--text-secondary, #C2BCCC)' }}>Target Master:</span>
                   <span style={{ fontWeight: 500 }}>1080p SDR Apple Silicon</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary, #BAB3C5)' }}>Aspect Ratio:</span>
+                  <span style={{ color: 'var(--text-secondary, #C2BCCC)' }}>Aspect Ratio:</span>
                   <span style={{ fontWeight: 500 }}>{activeProject.aspectRatio}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary, #BAB3C5)' }}>Frame Rate:</span>
+                  <span style={{ color: 'var(--text-secondary, #C2BCCC)' }}>Frame Rate:</span>
                   <span style={{ fontWeight: 500 }}>{activeProject.fpsNumerator}/{activeProject.fpsDenominator} fps</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary, #BAB3C5)' }}>Editorial Goal:</span>
+                  <span style={{ color: 'var(--text-secondary, #C2BCCC)' }}>Editorial Goal:</span>
                   <span style={{ fontWeight: 500 }}>{brief?.goal || 'Not specified'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary, #BAB3C5)' }}>Target Duration:</span>
+                  <span style={{ color: 'var(--text-secondary, #C2BCCC)' }}>Target Duration:</span>
                   <span style={{ fontWeight: 500 }}>{brief?.targetDurationSeconds ? `${brief.targetDurationSeconds}s` : '60s'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary, #BAB3C5)' }}>Audience:</span>
+                  <span style={{ color: 'var(--text-secondary, #C2BCCC)' }}>Audience:</span>
                   <span style={{ fontWeight: 500 }}>{brief?.audience || 'General'}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ color: 'var(--text-secondary, #BAB3C5)' }}>Source Media Health:</span>
-                  <span style={{ color: 'var(--text-secondary, #BAB3C5)', fontWeight: 500 }}>Unavailable until native verification</span>
+                  <span style={{ color: 'var(--text-secondary, #C2BCCC)' }}>Source Media Health:</span>
+                  <span style={{ color: 'var(--text-secondary, #C2BCCC)', fontWeight: 500 }}>Unavailable until native verification</span>
                 </div>
                 <div style={{ marginTop: '8px' }}>
                   <Button size="sm" variant="secondary" onClick={() => navigate('ai-briefs')}>
@@ -279,7 +279,7 @@ export const ProjectsRoute: React.FC = () => {
             </Card>
 
             <Card padding="md">
-              <h3 style={{ margin: '0 0 12px', fontSize: '15px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+              <h3 style={{ margin: '0 0 12px', fontSize: '15px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
                 Revision Snapshot
               </h3>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px' }}>
@@ -300,7 +300,7 @@ export const ProjectsRoute: React.FC = () => {
       {activeSubview === 'media' && activeProject && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
+            <span style={{ fontSize: '13px', color: 'var(--text-secondary, #C2BCCC)' }}>
               Source files imported into project ({assets.length} assets)
             </span>
             <Button
@@ -317,10 +317,10 @@ export const ProjectsRoute: React.FC = () => {
 
           {assets.length === 0 ? (
             <Card padding="lg" style={{ textAlign: 'center', borderStyle: 'dashed' }}>
-              <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-primary, #F3F0F6)' }}>
+              <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-primary, #FAF8FF)' }}>
                 No media assets imported yet
               </p>
-              <p style={{ margin: '6px 0 14px', fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+              <p style={{ margin: '6px 0 14px', fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
                 Import camera recordings, screencasts, or audio files to generate transcripts and edit.
               </p>
               <Button
@@ -393,10 +393,10 @@ export const ProjectsRoute: React.FC = () => {
           <Card padding="lg">
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '16px' }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
                 {selectedAsset.name}
               </h3>
-              <span style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
                 Path: {selectedAsset.path}
               </span>
             </div>
@@ -407,41 +407,41 @@ export const ProjectsRoute: React.FC = () => {
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
             <Card padding="sm" raised>
-              <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>CODEC</div>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>{selectedAsset.codec}</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)' }}>CODEC</div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>{selectedAsset.codec}</div>
             </Card>
             <Card padding="sm" raised>
-              <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>RESOLUTION</div>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>{selectedAsset.width} × {selectedAsset.height}</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)' }}>RESOLUTION</div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>{selectedAsset.width} × {selectedAsset.height}</div>
             </Card>
             <Card padding="sm" raised>
-              <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>TIMEBASE</div>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)' }}>TIMEBASE</div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
                 {selectedAsset.timeBase.num}/{selectedAsset.timeBase.den} s/tick · {selectedAsset.fpsNumerator}/{selectedAsset.fpsDenominator} fps
               </div>
             </Card>
             <Card padding="sm" raised>
-              <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>AUDIO CHANNELS</div>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>{selectedAsset.audioChannels} channels</div>
+              <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)' }}>AUDIO CHANNELS</div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>{selectedAsset.audioChannels} channels</div>
             </Card>
           </div>
 
           {/* Waveform representation: truthful pending state */}
           <div style={{ marginBottom: '16px' }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary, #BAB3C5)', marginBottom: '6px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary, #C2BCCC)', marginBottom: '6px' }}>
               AUDIO WAVEFORM PROFILE
             </div>
             <div
               style={{
                 width: '100%',
                 height: '54px',
-                backgroundColor: 'var(--bg-app, #19161F)',
+                backgroundColor: 'var(--bg-app, #08080C)',
                 borderRadius: '6px',
-                border: '1px solid var(--border-default, #443B4F)',
+                border: '1px solid var(--border-default, #2A2A3A)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: 'var(--text-tertiary-panel, #9A91A7)',
+                color: 'var(--text-tertiary-panel, #9D95B0)',
                 fontSize: '12px',
               }}
             >
@@ -486,7 +486,7 @@ export const ProjectsRoute: React.FC = () => {
             onChange={(e) => setImportFileName(e.target.value)}
             autoFocus
           />
-          <div style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+          <div style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
             The desktop native file picker will choose and authorize the source. Browser preview reports native-unavailable.
           </div>
           <Select

@@ -2,36 +2,37 @@ import { auditContrast, type ContrastAuditResult } from './contrast';
 
 /**
  * Cutroom Canonical Design Tokens
- * 
+ *
  * Sourced from docs/DESIGN_CONTRACT.md and PRODUCT.md.
- * Dark charcoal/plum world with violet, ochre, maroon, sky blue, and light green accents.
+ * Violet Noir: near-black surfaces with light violet, ochre, maroon,
+ * sky blue, and light green accents.
  */
 
 export const colors = {
-  // Surface foundations (Dark Charcoal / Plum)
-  bgApp: '#19161F',         // Deepest plum charcoal application backdrop
-  bgPanel: '#221E29',       // Primary opaque panel background
-  bgRaised: '#2B2533',      // Cards, popovers, elevated modals
-  bgGlass: 'rgba(34, 30, 41, 0.78)', // Navigation and command glass
-  bgGlassBorder: 'rgba(255, 255, 255, 0.08)',
+  // Surface foundations (Violet Noir: near-black with a violet undertone)
+  bgApp: '#08080C',         // Deepest near-black application backdrop
+  bgPanel: '#0F0F16',       // Primary opaque panel background
+  bgRaised: '#17171F',      // Cards, popovers, elevated modals
+  bgGlass: 'rgba(15, 15, 22, 0.78)', // Navigation and command glass
+  bgGlassBorder: 'rgba(255, 255, 255, 0.09)',
 
-  // Borders & Dividers
-  borderSubtle: '#362F40',  // Dividers and nested panel borders
-  borderDefault: '#443B4F', // Standard component borders
-  borderStrong: '#635773',  // Emphasized boundaries
-  borderFocus: '#A18AF7',   // Keyboard focus ring (2px violet)
+  // Borders & Dividers (stepped for visible surface separation)
+  borderSubtle: '#1E1E2A',  // Dividers and nested panel borders
+  borderDefault: '#2A2A3A', // Standard component borders
+  borderStrong: '#3D3D55',  // Emphasized boundaries
+  borderFocus: '#C4B5FD',   // Keyboard focus ring (2px light violet)
 
   // Text & Typography
-  textPrimary: '#F3F0F6',   // High-contrast off-white body text (>12:1)
-  textSecondary: '#BAB3C5', // Muted labels, secondary metadata (>5.5:1)
-  textTertiary: '#877E94',  // Disabled text, subtle timecodes (4.75:1 on app bg)
-  textTertiaryPanel: '#9A91A7', // Measured tertiary for panel surfaces (>5:1 on panel bg)
-  textInverse: '#191320',   // High-contrast text on solid violet/ochre fills
+  textPrimary: '#FAF8FF',   // High-contrast white body text (>16:1)
+  textSecondary: '#C2BCCC', // Muted labels, secondary metadata (>9:1)
+  textTertiary: '#8E87A0',  // Disabled text, subtle timecodes (5.8:1 on app bg)
+  textTertiaryPanel: '#9D95B0', // Measured tertiary for panel surfaces (>6:1 on panel bg)
+  textInverse: '#0B0A10',   // High-contrast text on solid violet/ochre fills
 
-  // Interaction Accent: Violet
-  accentViolet: '#A18AF7',
-  accentVioletHover: '#B5A3F9',
-  accentVioletSubtle: 'rgba(161, 138, 247, 0.14)',
+  // Interaction Accent: Light Violet
+  accentViolet: '#C4B5FD',
+  accentVioletHover: '#D6CBFF',
+  accentVioletSubtle: 'rgba(196, 181, 253, 0.14)',
 
   // Editorial Accent: Warm Ochre
   ochre: '#D6AE69',
@@ -98,9 +99,20 @@ export const typography = {
 } as const;
 
 export const transitions = {
+  instant: '100ms cubic-bezier(0.16, 1, 0.3, 1)',
   fast: '150ms cubic-bezier(0.16, 1, 0.3, 1)',
   normal: '220ms cubic-bezier(0.16, 1, 0.3, 1)',
   settle: '320ms cubic-bezier(0.16, 1, 0.3, 1)',
+  spring: '320ms cubic-bezier(0.34, 1.4, 0.64, 1)',
+} as const;
+
+export const motion = {
+  instant: 'var(--motion-instant, 100ms)',
+  fast: 'var(--motion-fast, 150ms)',
+  base: 'var(--motion-base, 220ms)',
+  slow: 'var(--motion-slow, 320ms)',
+  easeStandard: 'var(--ease-standard, cubic-bezier(0.16, 1, 0.3, 1))',
+  easeSpring: 'var(--ease-spring, cubic-bezier(0.34, 1.4, 0.64, 1))',
 } as const;
 
 /**

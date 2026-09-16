@@ -1,28 +1,28 @@
 :root {
-  /* Surface Foundations (Dark Charcoal / Plum) */
-  --bg-app: #19161F;
-  --bg-panel: #221E29;
-  --bg-raised: #2B2533;
-  --bg-glass: rgba(34, 30, 41, 0.78);
-  --bg-glass-border: rgba(255, 255, 255, 0.08);
+  /* Surface Foundations (Violet Noir: near-black with a violet undertone) */
+  --bg-app: #08080C;
+  --bg-panel: #0F0F16;
+  --bg-raised: #17171F;
+  --bg-glass: rgba(15, 15, 22, 0.78);
+  --bg-glass-border: rgba(255, 255, 255, 0.09);
 
-  /* Borders & Dividers */
-  --border-subtle: #362F40;
-  --border-default: #443B4F;
-  --border-strong: #635773;
-  --border-focus: #A18AF7;
+  /* Borders & Dividers (stepped for visible surface separation) */
+  --border-subtle: #1E1E2A;
+  --border-default: #2A2A3A;
+  --border-strong: #3D3D55;
+  --border-focus: #C4B5FD;
 
   /* Text & Typography */
-  --text-primary: #F3F0F6;
-  --text-secondary: #BAB3C5;
-  --text-tertiary: #877E94;
-  --text-tertiary-panel: #9A91A7;
-  --text-inverse: #191320;
+  --text-primary: #FAF8FF;
+  --text-secondary: #C2BCCC;
+  --text-tertiary: #8E87A0;
+  --text-tertiary-panel: #9D95B0;
+  --text-inverse: #0B0A10;
 
-  /* Interaction Accent: Violet */
-  --accent-violet: #A18AF7;
-  --accent-violet-hover: #B5A3F9;
-  --accent-violet-subtle: rgba(161, 138, 247, 0.14);
+  /* Interaction Accent: Light Violet */
+  --accent-violet: #C4B5FD;
+  --accent-violet-hover: #D6CBFF;
+  --accent-violet-subtle: rgba(196, 181, 253, 0.14);
 
   /* Editorial Accent: Warm Ochre */
   --ochre: #D6AE69;
@@ -45,6 +45,14 @@
   /* Destructive & Error */
   --destructive: #E06C75;
   --destructive-subtle: rgba(224, 108, 117, 0.16);
+
+  /* Motion */
+  --motion-instant: 100ms;
+  --motion-fast: 150ms;
+  --motion-base: 220ms;
+  --motion-slow: 320ms;
+  --ease-standard: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
 
   /* Dimensions */
   --sidebar-width: 216px;

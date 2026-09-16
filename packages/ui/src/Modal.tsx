@@ -42,10 +42,11 @@ export const Modal: React.FC<ModalProps> = ({
     <div
       role="presentation"
       onClick={onClose}
+      className="cutroom-animate-fade-in"
       style={{
         position: 'fixed',
         inset: 0,
-        backgroundColor: 'rgba(10, 8, 14, 0.75)',
+        backgroundColor: 'rgba(8, 8, 12, 0.75)',
         backdropFilter: 'blur(6px)',
         WebkitBackdropFilter: 'blur(6px)',
         display: 'flex',
@@ -62,11 +63,12 @@ export const Modal: React.FC<ModalProps> = ({
         aria-describedby={description ? 'modal-description' : undefined}
         ref={modalRef}
         onClick={(e) => e.stopPropagation()}
+        className="cutroom-animate-pop-in"
         style={{
           width: '100%',
           maxWidth,
-          backgroundColor: 'var(--bg-raised, #2B2533)',
-          border: '1px solid var(--border-strong, #635773)',
+          backgroundColor: 'var(--bg-raised, #17171F)',
+          border: '1px solid var(--border-strong, #3D3D55)',
           borderRadius: '16px',
           boxShadow: '0 24px 48px rgba(0, 0, 0, 0.6)',
           display: 'flex',
@@ -82,7 +84,7 @@ export const Modal: React.FC<ModalProps> = ({
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '20px 24px 16px',
-            borderBottom: '1px solid var(--border-subtle, #362F40)',
+            borderBottom: '1px solid var(--border-subtle, #1E1E2A)',
           }}
         >
           <div>
@@ -92,7 +94,7 @@ export const Modal: React.FC<ModalProps> = ({
                 margin: 0,
                 fontSize: '18px',
                 fontWeight: 600,
-                color: 'var(--text-primary, #F3F0F6)',
+                color: 'var(--text-primary, #FAF8FF)',
               }}
             >
               {title}
@@ -103,7 +105,7 @@ export const Modal: React.FC<ModalProps> = ({
                 style={{
                   margin: '4px 0 0',
                   fontSize: '13px',
-                  color: 'var(--text-secondary, #BAB3C5)',
+                  color: 'var(--text-secondary, #C2BCCC)',
                 }}
               >
                 {description}
@@ -117,7 +119,7 @@ export const Modal: React.FC<ModalProps> = ({
             style={{
               background: 'transparent',
               border: 'none',
-              color: 'var(--text-secondary, #BAB3C5)',
+              color: 'var(--text-secondary, #C2BCCC)',
               cursor: 'pointer',
               padding: '6px',
               borderRadius: '6px',

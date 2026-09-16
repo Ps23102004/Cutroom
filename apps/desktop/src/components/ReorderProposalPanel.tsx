@@ -127,22 +127,22 @@ export const ReorderProposalPanel: React.FC<ReorderProposalPanelProps> = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+      <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
         AI Edit Proposal &mdash; Reorder
       </h4>
-      <div style={{ fontSize: '11px', color: 'var(--text-secondary, #BAB3C5)' }}>
+      <div style={{ fontSize: '11px', color: 'var(--text-secondary, #C2BCCC)' }}>
         Local model: {modelLabel}. Proposals are previewed and require explicit acceptance. No edit is written until you Apply.
       </div>
 
       {/* Current track order context */}
-      <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>
+      <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)' }}>
         Track order ({trackClips.length} clip{trackClips.length !== 1 ? 's' : ''}):{" "}
         {trackClips.map((c, i) => (
           <span key={c.id}>
             {i > 0 && ' \u2192 '}
             <span style={{
               fontWeight: c.id === clip.id ? 700 : 400,
-              color: c.id === clip.id ? 'var(--text-primary, #F3F0F6)' : undefined,
+              color: c.id === clip.id ? 'var(--text-primary, #FAF8FF)' : undefined,
             }}>
               {c.name}
             </span>
@@ -151,7 +151,7 @@ export const ReorderProposalPanel: React.FC<ReorderProposalPanelProps> = ({
       </div>
 
       {clipIndex !== -1 && trackClips.length < 2 && (
-        <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>
+        <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)' }}>
           Reorder requires at least two clips on the same track.
         </div>
       )}
@@ -191,14 +191,14 @@ export const ReorderProposalPanel: React.FC<ReorderProposalPanelProps> = ({
       {proposal && !stale && proposedOrder && (
         <Card raised padding="sm" data-testid="reorder-proposal-preview">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary, #BAB3C5)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary, #C2BCCC)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               AI Edit Proposal
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-primary, #F3F0F6)' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-primary, #FAF8FF)' }}>
               <strong>Clip:</strong> {proposal.clipName} &mdash; move {proposal.direction}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px' }}>
-              <div style={{ color: 'var(--text-secondary, #BAB3C5)' }}>
+              <div style={{ color: 'var(--text-secondary, #C2BCCC)' }}>
                 CURRENT{" "}
                 {trackClips.map((c, i) => (
                   <span key={c.id}>
@@ -209,7 +209,7 @@ export const ReorderProposalPanel: React.FC<ReorderProposalPanelProps> = ({
                   </span>
                 ))}
               </div>
-              <div style={{ color: 'var(--text-primary, #F3F0F6)' }}>
+              <div style={{ color: 'var(--text-primary, #FAF8FF)' }}>
                 PROPOSED{" "}
                 {proposedOrder.map((c, i) => (
                   <span key={c.id}>
@@ -221,7 +221,7 @@ export const ReorderProposalPanel: React.FC<ReorderProposalPanelProps> = ({
                 ))}
               </div>
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
               <strong>Reason:</strong> {proposal.reason}
             </div>
 

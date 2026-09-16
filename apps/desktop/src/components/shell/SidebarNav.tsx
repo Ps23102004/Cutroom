@@ -25,7 +25,7 @@ export const SidebarNav: React.FC = () => {
         minWidth: '216px',
         maxWidth: '216px',
         height: '100vh',
-        backgroundColor: 'var(--bg-glass, rgba(34, 30, 41, 0.78))',
+        backgroundColor: 'var(--bg-glass, rgba(15, 15, 22, 0.78))',
         backdropFilter: 'blur(16px) saturate(180%)',
         WebkitBackdropFilter: 'blur(16px) saturate(180%)',
         borderRight: '1px solid var(--bg-glass-border, rgba(255, 255, 255, 0.08))',
@@ -44,7 +44,7 @@ export const SidebarNav: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          borderBottom: '1px solid var(--border-subtle, #362F40)',
+          borderBottom: '1px solid var(--border-subtle, #1E1E2A)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -53,13 +53,13 @@ export const SidebarNav: React.FC = () => {
               width: '22px',
               height: '22px',
               borderRadius: '5px',
-              backgroundColor: 'var(--accent-violet, #A18AF7)',
+              backgroundColor: 'var(--accent-violet, #C4B5FD)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontWeight: 800,
               fontSize: '12px',
-              color: 'var(--text-inverse, #191320)',
+              color: 'var(--text-inverse, #0B0A10)',
             }}
           >
             C
@@ -69,7 +69,7 @@ export const SidebarNav: React.FC = () => {
               fontSize: '14px',
               fontWeight: 700,
               letterSpacing: '0.06em',
-              color: 'var(--text-primary, #F3F0F6)',
+              color: 'var(--text-primary, #FAF8FF)',
             }}
           >
             CUTROOM
@@ -115,13 +115,13 @@ export const SidebarNav: React.FC = () => {
                 borderRadius: '6px',
                 border: 'none',
                 backgroundColor: isActive
-                  ? 'var(--accent-violet-subtle, rgba(161, 138, 247, 0.14))'
+                  ? 'var(--accent-violet-subtle, rgba(196, 181, 253, 0.14))'
                   : 'transparent',
                 color: isActive
-                  ? 'var(--accent-violet, #A18AF7)'
+                  ? 'var(--accent-violet, #C4B5FD)'
                   : isProjectScope && !hasProject
-                  ? 'var(--text-tertiary, #877E94)'
-                  : 'var(--text-secondary, #BAB3C5)',
+                  ? 'var(--text-tertiary, #8E87A0)'
+                  : 'var(--text-secondary, #C2BCCC)',
                 fontWeight: isActive ? 600 : 500,
                 fontSize: '13px',
                 cursor: 'pointer',
@@ -140,8 +140,8 @@ export const SidebarNav: React.FC = () => {
                 <span
                   style={{
                     fontSize: '10px',
-                    color: 'var(--text-tertiary, #877E94)',
-                    border: '1px solid var(--border-subtle, #362F40)',
+                    color: 'var(--text-tertiary, #8E87A0)',
+                    border: '1px solid var(--border-subtle, #1E1E2A)',
                     padding: '1px 4px',
                     borderRadius: '4px',
                   }}
@@ -157,7 +157,7 @@ export const SidebarNav: React.FC = () => {
       {/* Footer Utilities */}
       <div
         style={{
-          borderTop: '1px solid var(--border-subtle, #362F40)',
+          borderTop: '1px solid var(--border-subtle, #1E1E2A)',
           padding: '8px',
           display: 'flex',
           flexDirection: 'column',
@@ -183,8 +183,8 @@ export const SidebarNav: React.FC = () => {
                 padding: '0 10px',
                 borderRadius: '6px',
                 border: 'none',
-                backgroundColor: isActive ? 'var(--bg-raised, #2B2533)' : 'transparent',
-                color: isActive ? 'var(--text-primary, #F3F0F6)' : 'var(--text-secondary, #BAB3C5)',
+                backgroundColor: isActive ? 'var(--bg-raised, #17171F)' : 'transparent',
+                color: isActive ? 'var(--text-primary, #FAF8FF)' : 'var(--text-secondary, #C2BCCC)',
                 fontWeight: 500,
                 fontSize: '13px',
                 cursor: 'pointer',
@@ -199,7 +199,7 @@ export const SidebarNav: React.FC = () => {
                 <span
                   style={{
                     backgroundColor: 'var(--ochre, #D6AE69)',
-                    color: 'var(--text-inverse, #191320)',
+                    color: 'var(--text-inverse, #0B0A10)',
                     fontSize: '10px',
                     fontWeight: 700,
                     padding: '1px 6px',
@@ -224,7 +224,7 @@ export const SidebarNav: React.FC = () => {
             alignItems: 'center',
             justifyContent: 'space-between',
             fontSize: '11px',
-            color: 'var(--text-tertiary, #877E94)',
+            color: 'var(--text-tertiary, #8E87A0)',
           }}
         >
           <span>Runtime</span>
@@ -237,7 +237,7 @@ export const SidebarNav: React.FC = () => {
                 backgroundColor: isNativeConnected ? 'var(--positive, #A7D7A1)' : 'var(--ochre, #D6AE69)',
               }}
             />
-            <span style={{ color: isNativeConnected ? 'var(--positive, #A7D7A1)' : 'var(--text-secondary, #BAB3C5)' }}>
+            <span style={{ color: isNativeConnected ? 'var(--positive, #A7D7A1)' : 'var(--text-secondary, #C2BCCC)' }}>
               {isNativeConnected ? 'Tauri IPC' : 'Browser'}
             </span>
           </div>

@@ -33,7 +33,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
           style={{
             fontSize: '13px',
             fontWeight: 500,
-            color: 'var(--text-secondary, #BAB3C5)',
+            color: 'var(--text-secondary, #C2BCCC)',
             display: 'block',
           }}
         >
@@ -56,7 +56,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
               display: 'flex',
               alignItems: 'center',
               pointerEvents: 'none',
-              color: 'var(--text-tertiary, #877E94)',
+              color: 'var(--text-tertiary, #8E87A0)',
             }}
           >
             {leftIcon}
@@ -73,10 +73,10 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
             height: '38px',
             paddingLeft: leftIcon ? '36px' : '12px',
             paddingRight: rightIcon ? '36px' : '12px',
-            backgroundColor: 'var(--bg-panel, #221E29)',
-            border: `1px solid ${error ? 'var(--destructive, #E06C75)' : 'var(--border-default, #443B4F)'}`,
+            backgroundColor: 'var(--bg-panel, #0F0F16)',
+            border: `1px solid ${error ? 'var(--destructive, #E06C75)' : 'var(--border-default, #2A2A3A)'}`,
             borderRadius: '8px',
-            color: 'var(--text-primary, #F3F0F6)',
+            color: 'var(--text-primary, #FAF8FF)',
             fontSize: '14px',
             outline: 'none',
             boxSizing: 'border-box',
@@ -96,7 +96,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
               display: 'flex',
               alignItems: 'center',
               pointerEvents: 'none',
-              color: 'var(--text-tertiary, #877E94)',
+              color: 'var(--text-tertiary, #8E87A0)',
             }}
           >
             {rightIcon}
@@ -104,7 +104,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(({
         )}
       </div>
       {hint && !error && (
-        <span id={hintId} style={{ fontSize: '12px', color: 'var(--text-tertiary, #877E94)' }}>
+        <span id={hintId} style={{ fontSize: '12px', color: 'var(--text-tertiary, #8E87A0)' }}>
           {hint}
         </span>
       )}

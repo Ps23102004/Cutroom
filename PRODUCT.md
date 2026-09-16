@@ -17,7 +17,7 @@ Brief → Import → Understand → Select → Assemble → Edit → Review → 
 These are required capabilities, not current implementation claims. Core production works locally without an account or coding subscriptions. Immutable revisions, source-grounded AI proposals, backend permissions, exact-rendition approvals and recoverable jobs protect work. Initial certification targets macOS Apple Silicon, English speech and 1080p SDR; support requires executed tests.
 
 ## Brand Commitments
-Minimal charcoal/plum; violet actions; ochre, maroon, sky blue and light green accents. Glass-inspired controls/navigation with readable matte content. Exact shared navigation: Home, Projects, Studio, AI Briefs, Review, Versions, Deliver, Settings. Jobs and Help are footer utilities. No invented slogans, model capabilities or activity.
+Minimal near-black violet-noir; light-violet actions; ochre, maroon, sky blue and light green accents. Glass-inspired controls/navigation with readable matte content. Exact shared navigation: Home, Projects, Studio, AI Briefs, Review, Versions, Deliver, Settings. Jobs and Help are footer utilities. No invented slogans, model capabilities or activity.
 
 ## Evidence on Hand
 Full owner mandate and inspected build pack in references/. No running application, real screenshot or product benchmark yet. No current UI image exports found in supplied design toolkit.

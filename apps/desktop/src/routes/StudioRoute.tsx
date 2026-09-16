@@ -324,16 +324,16 @@ export const StudioRoute: React.FC = () => {
     return (
       <div style={{ maxWidth: '640px', margin: '40px auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
         <Card padding="lg" style={{ textAlign: 'center' }}>
-          <h2 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+          <h2 style={{ margin: '0 0 8px', fontSize: '18px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
             Project Context Required
           </h2>
-          <p style={{ margin: '0 0 24px', fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)', lineHeight: 1.5 }}>
+          <p style={{ margin: '0 0 24px', fontSize: '13px', color: 'var(--text-secondary, #C2BCCC)', lineHeight: 1.5 }}>
             Studio is a project-scoped workbench. Select an existing project or create one to open the synchronized timeline, video monitor, and transcript editor.
           </p>
 
           {projects.length > 0 ? (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', textAlign: 'left' }}>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary, #BAB3C5)' }}>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary, #C2BCCC)' }}>
                 SELECT A RECENT PROJECT:
               </div>
               {projects.map((p) => (
@@ -347,15 +347,15 @@ export const StudioRoute: React.FC = () => {
                     justifyContent: 'space-between',
                     padding: '10px 14px',
                     borderRadius: '8px',
-                    backgroundColor: 'var(--bg-panel, #221E29)',
-                    border: '1px solid var(--border-default, #443B4F)',
+                    backgroundColor: 'var(--bg-panel, #0F0F16)',
+                    border: '1px solid var(--border-default, #2A2A3A)',
                     cursor: 'pointer',
                     color: 'inherit',
                     textAlign: 'left',
                     width: '100%',
                   }}
                 >
-                  <span style={{ fontWeight: 500, fontSize: '14px', color: 'var(--text-primary, #F3F0F6)' }}>
+                  <span style={{ fontWeight: 500, fontSize: '14px', color: 'var(--text-primary, #FAF8FF)' }}>
                     {p.name}
                   </span>
                   <Badge variant={p.status}>{p.status}</Badge>
@@ -395,11 +395,11 @@ export const StudioRoute: React.FC = () => {
       {/* Top Studio Action Bar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+          <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
             Studio: {activeProject.name}
           </h2>
           <Badge variant="violet">v{composition?.version || 1} Working Cut</Badge>
-          <span className="font-mono" style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+          <span className="font-mono" style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
             Ticks: {playheadTicks} / {String(totalDuration)}
           </span>
         </div>
@@ -436,8 +436,8 @@ export const StudioRoute: React.FC = () => {
         <div
           style={{
             flex: '2 1 0',
-            backgroundColor: 'var(--bg-panel, #221E29)',
-            border: '1px solid var(--border-default, #443B4F)',
+            backgroundColor: 'var(--bg-panel, #0F0F16)',
+            border: '1px solid var(--border-default, #2A2A3A)',
             borderRadius: '8px',
             display: 'flex',
             flexDirection: 'column',
@@ -448,14 +448,14 @@ export const StudioRoute: React.FC = () => {
           <div
             style={{
               padding: '6px 12px',
-              borderBottom: '1px solid var(--border-subtle, #362F40)',
+              borderBottom: '1px solid var(--border-subtle, #1E1E2A)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               fontSize: '11px',
             }}
           >
-            <span style={{ color: 'var(--text-secondary, #BAB3C5)', fontWeight: 600 }}>PROGRAM MONITOR</span>
+            <span style={{ color: 'var(--text-secondary, #C2BCCC)', fontWeight: 600 }}>PROGRAM MONITOR</span>
             {/* Astra Review Correction 3: Truthful preview unavailable label */}
             <Badge variant="neutral">Preview Unavailable (Media Unbound)</Badge>
           </div>
@@ -475,8 +475,8 @@ export const StudioRoute: React.FC = () => {
               style={{
                 width: activeProject.aspectRatio === '9:16' ? '180px' : '360px',
                 height: activeProject.aspectRatio === '9:16' ? '320px' : '202px',
-                backgroundColor: '#19161F',
-                border: '1px solid var(--border-subtle, #362F40)',
+                backgroundColor: 'var(--bg-app, #08080C)',
+                border: '1px solid var(--border-subtle, #1E1E2A)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
@@ -486,10 +486,10 @@ export const StudioRoute: React.FC = () => {
                 textAlign: 'center',
               }}
             >
-              <span style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)', lineHeight: 1.4 }}>
+              <span style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)', lineHeight: 1.4 }}>
                 Playback disabled until media source is connected via native media pipeline.
               </span>
-              <span className="font-mono" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)', marginTop: '8px' }}>
+              <span className="font-mono" style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)', marginTop: '8px' }}>
                 {formatRationalTimecode(playheadTicks, compositionTimeBase, rationalFps)}
               </span>
               {/* Safe Area Guides */}
@@ -508,7 +508,7 @@ export const StudioRoute: React.FC = () => {
           <div
             style={{
               padding: '8px 16px',
-              borderTop: '1px solid var(--border-subtle, #362F40)',
+              borderTop: '1px solid var(--border-subtle, #1E1E2A)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -523,21 +523,21 @@ export const StudioRoute: React.FC = () => {
               >
                 <PlayIcon size={14} />
               </Button>
-              <span className="font-mono" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+              <span className="font-mono" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
                 {formatRationalTimecode(playheadTicks, compositionTimeBase, rationalFps)}
               </span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
               <span>Snap:</span>
               <button
                 type="button"
                 onClick={() => setIsSnapEnabled(!isSnapEnabled)}
                 style={{
                   background: 'transparent',
-                  border: `1px solid ${isSnapEnabled ? 'var(--accent-violet, #A18AF7)' : 'var(--border-default, #443B4F)'}`,
+                  border: `1px solid ${isSnapEnabled ? 'var(--accent-violet, #C4B5FD)' : 'var(--border-default, #2A2A3A)'}`,
                   borderRadius: '4px',
-                  color: isSnapEnabled ? 'var(--accent-violet, #A18AF7)' : 'var(--text-tertiary-panel, #9A91A7)',
+                  color: isSnapEnabled ? 'var(--accent-violet, #C4B5FD)' : 'var(--text-tertiary-panel, #9D95B0)',
                   padding: '2px 8px',
                   fontSize: '11px',
                   cursor: 'pointer',
@@ -553,8 +553,8 @@ export const StudioRoute: React.FC = () => {
         <div
           style={{
             flex: '1.5 1 0',
-            backgroundColor: 'var(--bg-panel, #221E29)',
-            border: '1px solid var(--border-default, #443B4F)',
+            backgroundColor: 'var(--bg-panel, #0F0F16)',
+            border: '1px solid var(--border-default, #2A2A3A)',
             borderRadius: '8px',
             display: 'flex',
             flexDirection: 'column',
@@ -564,15 +564,15 @@ export const StudioRoute: React.FC = () => {
           <div
             style={{
               padding: '6px 12px',
-              borderBottom: '1px solid var(--border-subtle, #362F40)',
+              borderBottom: '1px solid var(--border-subtle, #1E1E2A)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               fontSize: '11px',
             }}
           >
-            <span style={{ color: 'var(--text-secondary, #BAB3C5)', fontWeight: 600 }}>SYNCHRONIZED TRANSCRIPT</span>
-            <span style={{ color: 'var(--text-tertiary-panel, #9A91A7)' }}>{isFixtureMode ? 'Fixture transcript sample' : 'Native analysis unavailable'}</span>
+            <span style={{ color: 'var(--text-secondary, #C2BCCC)', fontWeight: 600 }}>SYNCHRONIZED TRANSCRIPT</span>
+            <span style={{ color: 'var(--text-tertiary-panel, #9D95B0)' }}>{isFixtureMode ? 'Fixture transcript sample' : 'Native analysis unavailable'}</span>
           </div>
 
           <div style={{ flex: 1, padding: '12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -588,7 +588,7 @@ export const StudioRoute: React.FC = () => {
                 style={{
                   padding: '6px 10px',
                   borderRadius: '6px',
-                  backgroundColor: BigInt(playheadTicks) >= BigInt(cue.ticks) && BigInt(playheadTicks) < BigInt(cue.ticks) + 7200n ? 'var(--accent-violet-subtle, rgba(161, 138, 247, 0.14))' : 'transparent',
+                  backgroundColor: BigInt(playheadTicks) >= BigInt(cue.ticks) && BigInt(playheadTicks) < BigInt(cue.ticks) + 7200n ? 'var(--accent-violet-subtle, rgba(196, 181, 253, 0.14))' : 'transparent',
                   cursor: 'pointer',
                   fontSize: '13px',
                   lineHeight: 1.4,
@@ -597,14 +597,14 @@ export const StudioRoute: React.FC = () => {
                   textAlign: 'left',
                 }}
               >
-                <span className="font-mono" style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)', marginRight: '8px' }}>
+                <span className="font-mono" style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)', marginRight: '8px' }}>
                   {formatRationalTimecode(cue.ticks, compositionTimeBase, rationalFps)}
                 </span>
                 <span>"{cue.text}"</span>
               </button>
             ))) : null}
             {!isFixtureMode && (
-              <div style={{ color: 'var(--text-secondary, #BAB3C5)', fontSize: '13px', lineHeight: 1.5 }}>
+              <div style={{ color: 'var(--text-secondary, #C2BCCC)', fontSize: '13px', lineHeight: 1.5 }}>
                 Transcript unavailable until native speech analysis produces timecoded cues.
               </div>
             )}
@@ -615,15 +615,15 @@ export const StudioRoute: React.FC = () => {
         <div
           style={{
             flex: '1.2 1 0',
-            backgroundColor: 'var(--bg-panel, #221E29)',
-            border: '1px solid var(--border-default, #443B4F)',
+            backgroundColor: 'var(--bg-panel, #0F0F16)',
+            border: '1px solid var(--border-default, #2A2A3A)',
             borderRadius: '8px',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
           }}
         >
-          <div style={{ padding: '4px 8px', borderBottom: '1px solid var(--border-subtle, #362F40)' }}>
+          <div style={{ padding: '4px 8px', borderBottom: '1px solid var(--border-subtle, #1E1E2A)' }}>
             <Tabs
               items={inspectorTabs}
               activeId={activeInspector}
@@ -635,15 +635,15 @@ export const StudioRoute: React.FC = () => {
             {/* AUDIO INSPECTOR (Astra Correction 2: No fixed fake peak/clipping claims) */}
             {activeInspector === 'audio' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+                <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
                   Audio Gain & Signal Status (Preview only)
                 </h4>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
                   Native audio gain application is unavailable; these values are not written to the composition.
                 </div>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                    <span style={{ color: 'var(--text-secondary, #BAB3C5)' }}>Dialogue Track Gain</span>
+                    <span style={{ color: 'var(--text-secondary, #C2BCCC)' }}>Dialogue Track Gain</span>
                     <span className="font-mono">{dialogueGain} dB</span>
                   </div>
                   <input
@@ -661,7 +661,7 @@ export const StudioRoute: React.FC = () => {
 
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '4px' }}>
-                    <span style={{ color: 'var(--text-secondary, #BAB3C5)' }}>Music Bed Gain</span>
+                    <span style={{ color: 'var(--text-secondary, #C2BCCC)' }}>Music Bed Gain</span>
                     <span className="font-mono">{musicGain} dB</span>
                   </div>
                   <input
@@ -677,8 +677,8 @@ export const StudioRoute: React.FC = () => {
                   />
                 </div>
 
-                <div style={{ padding: '8px 10px', backgroundColor: 'var(--bg-app, #19161F)', borderRadius: '6px', fontSize: '12px' }}>
-                  <div style={{ color: 'var(--text-tertiary-panel, #9A91A7)' }}>
+                <div style={{ padding: '8px 10px', backgroundColor: 'var(--bg-app, #08080C)', borderRadius: '6px', fontSize: '12px' }}>
+                  <div style={{ color: 'var(--text-tertiary-panel, #9D95B0)' }}>
                     Peak signal & clipping: <em>Pending local FFmpeg signal analysis</em>
                   </div>
                 </div>
@@ -688,10 +688,10 @@ export const StudioRoute: React.FC = () => {
             {/* CAPTIONS INSPECTOR */}
             {activeInspector === 'caption' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+                <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
                   Caption Styling
                 </h4>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
                   Preset: {captionStyle}
                 </div>
                 <div style={{ display: 'flex', gap: '8px' }}>
@@ -714,7 +714,7 @@ export const StudioRoute: React.FC = () => {
                     Top Area
                   </Button>
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)', marginTop: '8px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)', marginTop: '8px' }}>
                   {isFixtureMode ? 'Fixture preview only; production caption writes are unavailable.' : 'Native caption styling is unavailable.'}
                 </div>
               </div>
@@ -723,13 +723,13 @@ export const StudioRoute: React.FC = () => {
             {/* BRAND INSPECTOR */}
             {activeInspector === 'brand' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+                <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
                   User Brand Presets
                 </h4>
-                <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+                <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
                   Configure client watermark overlays and brand fonts.
                 </p>
-                <div style={{ padding: '16px', border: '1px dashed var(--border-default, #443B4F)', borderRadius: '6px', textAlign: 'center', fontSize: '12px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>
+                <div style={{ padding: '16px', border: '1px dashed var(--border-default, #2A2A3A)', borderRadius: '6px', textAlign: 'center', fontSize: '12px', color: 'var(--text-tertiary-panel, #9D95B0)' }}>
                   Available when the desktop media engine is connected.
                 </div>
               </div>
@@ -748,9 +748,9 @@ export const StudioRoute: React.FC = () => {
                           padding: '4px 10px',
                           fontSize: '11px',
                           fontWeight: aiProposalType === type ? 600 : 400,
-                          color: aiProposalType === type ? 'var(--text-primary, #F3F0F6)' : 'var(--text-tertiary-panel, #9A91A7)',
-                          backgroundColor: aiProposalType === type ? 'var(--bg-raised, #2B2533)' : 'transparent',
-                          border: aiProposalType === type ? '1px solid var(--border-default, #443B4F)' : '1px solid transparent',
+                          color: aiProposalType === type ? 'var(--text-primary, #FAF8FF)' : 'var(--text-tertiary-panel, #9D95B0)',
+                          backgroundColor: aiProposalType === type ? 'var(--bg-raised, #17171F)' : 'transparent',
+                          border: aiProposalType === type ? '1px solid var(--border-default, #2A2A3A)' : '1px solid transparent',
                           borderRadius: '4px',
                           cursor: 'pointer',
                           textTransform: 'capitalize',
@@ -764,7 +764,7 @@ export const StudioRoute: React.FC = () => {
                   {/* Trim proposals */}
                   {aiProposalType === 'trim' && (
                     !selectedClip || !selectedClipAsset || !composition ? (
-                      <div style={{ padding: '8px', backgroundColor: 'var(--bg-app, #19161F)', borderRadius: '6px', fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>
+                      <div style={{ padding: '8px', backgroundColor: 'var(--bg-app, #08080C)', borderRadius: '6px', fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)' }}>
                         Select a timeline clip to request an AI trim proposal.
                       </div>
                     ) : (
@@ -782,7 +782,7 @@ export const StudioRoute: React.FC = () => {
                   {/* Reorder proposals */}
                   {aiProposalType === 'reorder' && (
                     !selectedClip || !composition ? (
-                      <div style={{ padding: '8px', backgroundColor: 'var(--bg-app, #19161F)', borderRadius: '6px', fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>
+                      <div style={{ padding: '8px', backgroundColor: 'var(--bg-app, #08080C)', borderRadius: '6px', fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)' }}>
                         Select a timeline clip to request an AI reorder proposal.
                       </div>
                     ) : (
@@ -799,7 +799,7 @@ export const StudioRoute: React.FC = () => {
                     {/* Delete proposals */}
                     {aiProposalType === 'delete' && (
                        !selectedClip || !composition ? (
-                        <div style={{ padding: '8px', backgroundColor: 'var(--bg-app, #19161F)', borderRadius: '6px', fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>
+                        <div style={{ padding: '8px', backgroundColor: 'var(--bg-app, #08080C)', borderRadius: '6px', fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)' }}>
                         Select a timeline clip to request an AI delete proposal.
                         </div>
                       ) : (
@@ -817,7 +817,7 @@ export const StudioRoute: React.FC = () => {
                     {/* Insert proposals — no clip selection required */}
                     {aiProposalType === 'insert' && (
                       !composition || !addClip ? (
-                        <div style={{ padding: '8px', backgroundColor: 'var(--bg-app, #19161F)', borderRadius: '6px', fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>
+                        <div style={{ padding: '8px', backgroundColor: 'var(--bg-app, #08080C)', borderRadius: '6px', fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)' }}>
                           Open a project with a composition to request an AI insert proposal.
                         </div>
                       ) : (
@@ -834,7 +834,7 @@ export const StudioRoute: React.FC = () => {
                     {/* Replace proposals */}
                     {aiProposalType === 'replace' && (
                       !selectedClip || !composition ? (
-                        <div style={{ padding: '8px', backgroundColor: 'var(--bg-app, #19161F)', borderRadius: '6px', fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>
+                        <div style={{ padding: '8px', backgroundColor: 'var(--bg-app, #08080C)', borderRadius: '6px', fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)' }}>
                           Select a timeline clip to request an AI replace proposal.
                         </div>
                       ) : (
@@ -853,7 +853,7 @@ export const StudioRoute: React.FC = () => {
                     {/* Edit Plan / Assembly proposals — no clip selection required */}
                     {aiProposalType === 'plan' && (
                       !composition ? (
-                        <div style={{ padding: '8px', backgroundColor: 'var(--bg-app, #19161F)', borderRadius: '6px', fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>
+                        <div style={{ padding: '8px', backgroundColor: 'var(--bg-app, #08080C)', borderRadius: '6px', fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)' }}>
                           Open a project with a composition to request an AI edit plan.
                         </div>
                       ) : (
@@ -881,8 +881,8 @@ export const StudioRoute: React.FC = () => {
       <div
         style={{
           flex: '1 1 50%',
-          backgroundColor: 'var(--bg-panel, #221E29)',
-          border: '1px solid var(--border-default, #443B4F)',
+          backgroundColor: 'var(--bg-panel, #0F0F16)',
+          border: '1px solid var(--border-default, #2A2A3A)',
           borderRadius: '8px',
           display: 'flex',
           flexDirection: 'column',
@@ -894,15 +894,15 @@ export const StudioRoute: React.FC = () => {
         <div
           style={{
             padding: '6px 12px',
-            borderBottom: '1px solid var(--border-subtle, #362F40)',
+            borderBottom: '1px solid var(--border-subtle, #1E1E2A)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            backgroundColor: 'var(--bg-raised, #2B2533)',
+            backgroundColor: 'var(--bg-raised, #17171F)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary, #BAB3C5)', marginRight: '6px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary, #C2BCCC)', marginRight: '6px' }}>
               TOOLS:
             </span>
             <Button
@@ -974,7 +974,7 @@ export const StudioRoute: React.FC = () => {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '11px', color: 'var(--text-secondary, #BAB3C5)' }}>Zoom:</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-secondary, #C2BCCC)' }}>Zoom:</span>
               <input
                 type="range"
                 min="0.5"
@@ -985,13 +985,13 @@ export const StudioRoute: React.FC = () => {
                 style={{ width: '80px' }}
               />
             </div>
-            <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)' }}>
               Keyboard: S = Split | [ / ] = Trim | Del = Remove
             </div>
           </div>
         </div>
         {timelineError && (
-          <div role="alert" style={{ padding: '6px 12px', color: 'var(--destructive, #E06C75)', fontSize: '12px', borderBottom: '1px solid var(--border-subtle, #362F40)' }}>
+          <div role="alert" style={{ padding: '6px 12px', color: 'var(--destructive, #E06C75)', fontSize: '12px', borderBottom: '1px solid var(--border-subtle, #1E1E2A)' }}>
             {timelineError}
           </div>
         )}
@@ -1000,8 +1000,8 @@ export const StudioRoute: React.FC = () => {
         <div
           style={{
             padding: '8px 12px',
-            borderBottom: '1px solid var(--border-subtle, #362F40)',
-            backgroundColor: 'var(--bg-panel, #221E29)',
+            borderBottom: '1px solid var(--border-subtle, #1E1E2A)',
+            backgroundColor: 'var(--bg-panel, #0F0F16)',
             display: 'grid',
             gridTemplateColumns: '1.4fr 1fr 1fr 1.2fr auto',
             gap: '8px',
@@ -1047,7 +1047,7 @@ export const StudioRoute: React.FC = () => {
             Add Range
           </Button>
           {selectedSourceAsset && (
-            <span style={{ gridColumn: '1 / -1', fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>
+            <span style={{ gridColumn: '1 / -1', fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)' }}>
               Asset timebase: {selectedSourceAsset.timeBase.num}/{selectedSourceAsset.timeBase.den}; composition timebase: {composition?.timeBase.num}/{composition?.timeBase.den}. Native validates and converts the boundary.
             </span>
           )}
@@ -1080,7 +1080,7 @@ export const StudioRoute: React.FC = () => {
                   display: 'flex',
                   height: '38px',
                   minHeight: '38px',
-                  borderBottom: '1px solid var(--border-subtle, #362F40)',
+                  borderBottom: '1px solid var(--border-subtle, #1E1E2A)',
                 }}
               >
                 {/* Track Header (Fixed width) */}
@@ -1089,14 +1089,14 @@ export const StudioRoute: React.FC = () => {
                     width: '140px',
                     minWidth: '140px',
                     padding: '0 10px',
-                    backgroundColor: 'var(--bg-panel, #221E29)',
-                    borderRight: '1px solid var(--border-subtle, #362F40)',
+                    backgroundColor: 'var(--bg-panel, #0F0F16)',
+                    borderRight: '1px solid var(--border-subtle, #1E1E2A)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     fontSize: '11px',
                     fontWeight: 600,
-                    color: 'var(--text-secondary, #BAB3C5)',
+                    color: 'var(--text-secondary, #C2BCCC)',
                   }}
                 >
                   <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1143,10 +1143,10 @@ export const StudioRoute: React.FC = () => {
                           width: `${Math.max(widthPct, 2)}%`,
                           top: '4px',
                           bottom: '4px',
-                          backgroundColor: clip.color || 'var(--accent-violet, #A18AF7)',
+                          backgroundColor: clip.color || 'var(--accent-violet, #C4B5FD)',
                           borderRadius: '4px',
                           border: isSelected ? '2px solid #FFFFFF' : '1px solid rgba(0, 0, 0, 0.4)',
-                          color: '#191320',
+                          color: '#0B0A10',
                           fontSize: '11px',
                           fontWeight: 600,
                           padding: '2px 6px',
@@ -1219,10 +1219,10 @@ export const StudioRoute: React.FC = () => {
           }}
         >
           <Card padding="lg" raised style={{ width: '460px' }}>
-            <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+            <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
               Save Immutable Revision
             </h3>
-            <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
+            <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--text-secondary, #C2BCCC)' }}>
               Creates a permanent cryptographic snapshot of the current edit state.
             </p>
 
@@ -1244,7 +1244,7 @@ export const StudioRoute: React.FC = () => {
             )}
 
             <form onSubmit={handleSaveRevision}>
-              <label htmlFor="revision-note-input" style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)', marginBottom: '4px' }}>
+              <label htmlFor="revision-note-input" style={{ display: 'block', fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)', marginBottom: '4px' }}>
                 Commit Note
               </label>
               <input
@@ -1256,10 +1256,10 @@ export const StudioRoute: React.FC = () => {
                 style={{
                   width: '100%',
                   height: '38px',
-                  backgroundColor: 'var(--bg-panel, #221E29)',
-                  border: '1px solid var(--border-default, #443B4F)',
+                  backgroundColor: 'var(--bg-panel, #0F0F16)',
+                  border: '1px solid var(--border-default, #2A2A3A)',
                   borderRadius: '6px',
-                  color: 'var(--text-primary, #F3F0F6)',
+                  color: 'var(--text-primary, #FAF8FF)',
                   padding: '0 12px',
                   fontSize: '13px',
                   marginBottom: '16px',

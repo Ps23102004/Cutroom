@@ -37,7 +37,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({
           style={{
             fontSize: '13px',
             fontWeight: 500,
-            color: 'var(--text-secondary, #BAB3C5)',
+            color: 'var(--text-secondary, #C2BCCC)',
             display: 'block',
           }}
         >
@@ -56,10 +56,10 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({
             height: '38px',
             paddingLeft: '12px',
             paddingRight: '36px',
-            backgroundColor: 'var(--bg-panel, #221E29)',
-            border: `1px solid ${error ? 'var(--destructive, #E06C75)' : 'var(--border-default, #443B4F)'}`,
+            backgroundColor: 'var(--bg-panel, #0F0F16)',
+            border: `1px solid ${error ? 'var(--destructive, #E06C75)' : 'var(--border-default, #2A2A3A)'}`,
             borderRadius: '8px',
-            color: 'var(--text-primary, #F3F0F6)',
+            color: 'var(--text-primary, #FAF8FF)',
             fontSize: '14px',
             outline: 'none',
             appearance: 'none',
@@ -85,14 +85,14 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({
             top: '50%',
             transform: 'translateY(-50%)',
             pointerEvents: 'none',
-            color: 'var(--text-secondary, #BAB3C5)',
+            color: 'var(--text-secondary, #C2BCCC)',
           }}
         >
           ▼
         </div>
       </div>
       {hint && !error && (
-        <span id={hintId} style={{ fontSize: '12px', color: 'var(--text-tertiary, #877E94)' }}>
+        <span id={hintId} style={{ fontSize: '12px', color: 'var(--text-tertiary, #8E87A0)' }}>
           {hint}
         </span>
       )}

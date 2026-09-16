@@ -34,26 +34,26 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(({
 
   const variantStyles: Record<ButtonVariant, React.CSSProperties> = {
     primary: {
-      backgroundColor: 'var(--accent-violet, #A18AF7)',
-      color: 'var(--text-inverse, #191320)',
+      backgroundColor: 'var(--accent-violet, #C4B5FD)',
+      color: 'var(--text-inverse, #0B0A10)',
       border: '1px solid transparent',
       fontWeight: 500,
     },
     secondary: {
-      backgroundColor: 'var(--bg-raised, #2B2533)',
-      color: 'var(--text-primary, #F3F0F6)',
-      border: '1px solid var(--border-default, #443B4F)',
+      backgroundColor: 'var(--bg-raised, #17171F)',
+      color: 'var(--text-primary, #FAF8FF)',
+      border: '1px solid var(--border-default, #2A2A3A)',
       fontWeight: 500,
     },
     outline: {
       backgroundColor: 'transparent',
-      color: 'var(--text-primary, #F3F0F6)',
-      border: '1px solid var(--border-default, #443B4F)',
+      color: 'var(--text-primary, #FAF8FF)',
+      border: '1px solid var(--border-default, #2A2A3A)',
       fontWeight: 500,
     },
     ghost: {
       backgroundColor: 'transparent',
-      color: 'var(--text-secondary, #BAB3C5)',
+      color: 'var(--text-secondary, #C2BCCC)',
       border: '1px solid transparent',
       fontWeight: 500,
     },
