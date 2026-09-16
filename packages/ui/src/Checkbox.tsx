@@ -34,8 +34,8 @@ export const Checkbox: React.FC<CheckboxProps> = ({
           width: '18px',
           height: '18px',
           borderRadius: '4px',
-          backgroundColor: checked ? 'var(--accent-violet, #A18AF7)' : 'var(--bg-panel, #221E29)',
-          border: `1px solid ${checked ? 'var(--accent-violet, #A18AF7)' : 'var(--border-default, #443B4F)'}`,
+          backgroundColor: checked ? 'var(--accent-violet, #C4B5FD)' : 'var(--bg-panel, #0F0F16)',
+          border: `1px solid ${checked ? 'var(--accent-violet, #C4B5FD)' : 'var(--border-default, #2A2A3A)'}`,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -49,17 +49,17 @@ export const Checkbox: React.FC<CheckboxProps> = ({
         }}
         className="cutroom-checkbox"
       >
-        {checked && <CheckIcon size={14} style={{ color: 'var(--text-inverse, #191320)' }} />}
+        {checked && <CheckIcon size={14} style={{ color: 'var(--text-inverse, #0B0A10)' }} />}
       </button>
       {(label || description) && (
         <label htmlFor={checkboxId} style={{ cursor: disabled ? 'not-allowed' : 'pointer', userSelect: 'none' }}>
           {label && (
-            <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary, #F3F0F6)' }}>
+            <div style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary, #FAF8FF)' }}>
               {label}
             </div>
           )}
           {description && (
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)', marginTop: '2px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)', marginTop: '2px' }}>
               {description}
             </div>
           )}

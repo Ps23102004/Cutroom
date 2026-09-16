@@ -12,8 +12,8 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
         display: 'flex',
         width: '100vw',
         height: '100vh',
-        backgroundColor: 'var(--bg-app, #19161F)',
-        color: 'var(--text-primary, #F3F0F6)',
+        backgroundColor: 'var(--bg-app, #08080C)',
+        color: 'var(--text-primary, #FAF8FF)',
         overflow: 'hidden',
       }}
     >
@@ -43,7 +43,7 @@ export const AppShell: React.FC<{ children: React.ReactNode }> = ({ children }) 
             flex: 1,
             overflowY: 'auto',
             padding: '24px',
-            backgroundColor: 'var(--bg-app, #19161F)',
+            backgroundColor: 'var(--bg-app, #08080C)',
             boxSizing: 'border-box',
           }}
         >

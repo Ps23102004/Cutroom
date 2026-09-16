@@ -37,13 +37,13 @@ export const Badge: React.FC<BadgeProps> = ({
     },
     neutral: {
       backgroundColor: 'rgba(255, 255, 255, 0.06)',
-      color: 'var(--text-secondary, #BAB3C5)',
-      border: '1px solid var(--border-subtle, #362F40)',
+      color: 'var(--text-secondary, #C2BCCC)',
+      border: '1px solid var(--border-subtle, #1E1E2A)',
     },
     violet: {
-      backgroundColor: 'var(--accent-violet-subtle, rgba(161, 138, 247, 0.14))',
-      color: 'var(--accent-violet, #A18AF7)',
-      border: '1px solid rgba(161, 138, 247, 0.35)',
+      backgroundColor: 'var(--accent-violet-subtle, rgba(196, 181, 253, 0.14))',
+      color: 'var(--accent-violet, #C4B5FD)',
+      border: '1px solid rgba(196, 181, 253, 0.35)',
     },
     destructive: {
       backgroundColor: 'var(--destructive-subtle, rgba(224, 108, 117, 0.16))',

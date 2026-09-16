@@ -69,10 +69,10 @@ export const DeliverRoute: React.FC = () => {
     return (
       <div style={{ maxWidth: '600px', margin: '40px auto' }}>
         <Card padding="lg" style={{ textAlign: 'center' }}>
-          <h2 style={{ margin: '0 0 8px', fontSize: '18px', color: 'var(--text-primary, #F3F0F6)' }}>
+          <h2 style={{ margin: '0 0 8px', fontSize: '18px', color: 'var(--text-primary, #FAF8FF)' }}>
             Deliver Requires Active Project
           </h2>
-          <p style={{ margin: '0 0 20px', fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
+          <p style={{ margin: '0 0 20px', fontSize: '13px', color: 'var(--text-secondary, #C2BCCC)' }}>
             Render outputs, preflight verification, and delivery packages are project-scoped.
           </p>
           <Button variant="primary" onClick={() => navigate('home')}>
@@ -124,10 +124,10 @@ export const DeliverRoute: React.FC = () => {
     <div style={{ maxWidth: '1080px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '20px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: 'var(--text-primary, #F3F0F6)' }}>
+          <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: 'var(--text-primary, #FAF8FF)' }}>
             Deliver & Master Export
           </h1>
-          <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
+          <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary, #C2BCCC)' }}>
             Project: <strong>{activeProject.name}</strong> • Implemented local master export and preflight validation checklist.
           </p>
         </div>
@@ -138,7 +138,7 @@ export const DeliverRoute: React.FC = () => {
       {/* SUBVIEW 1: Output Setup */}
       {activeSubview === 'setup' && (
         <Card padding="lg">
-          <h3 style={{ margin: '0 0 16px', fontSize: '16px', color: 'var(--text-primary, #F3F0F6)' }}>
+          <h3 style={{ margin: '0 0 16px', fontSize: '16px', color: 'var(--text-primary, #FAF8FF)' }}>
             Standard Output Presets
           </h3>
 
@@ -180,17 +180,17 @@ export const DeliverRoute: React.FC = () => {
               ]}
             />
 
-            <div style={{ padding: '16px', backgroundColor: 'var(--bg-app, #19161F)', borderRadius: '8px', border: '1px solid var(--border-default, #443B4F)' }}>
-              <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary, #F3F0F6)', marginBottom: '8px' }}>
+            <div style={{ padding: '16px', backgroundColor: 'var(--bg-app, #08080C)', borderRadius: '8px', border: '1px solid var(--border-default, #2A2A3A)' }}>
+              <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary, #FAF8FF)', marginBottom: '8px' }}>
                 IMPLEMENTED RENDER SPECIFICATION
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
                 <div>Container: <strong>MP4</strong></div>
                 <div>Video Codec: <strong>H.264 (libx264), 1080p24</strong></div>
                 <div>Audio Profile: <strong>AAC</strong></div>
                 <div>Color Primaries: <strong>Rec.709 SDR</strong></div>
                 <div>Source ranges: <strong>Frame/sample aligned</strong></div>
-                <div>Preflight Status: <strong style={{ color: 'var(--text-secondary, #BAB3C5)' }}>Unavailable (Not Checked)</strong></div>
+                <div>Preflight Status: <strong style={{ color: 'var(--text-secondary, #C2BCCC)' }}>Unavailable (Not Checked)</strong></div>
               </div>
             </div>
 
@@ -210,12 +210,12 @@ export const DeliverRoute: React.FC = () => {
                 </Button>
               </div>
               {!isNativeConnected && (
-                <div style={{ fontSize: '12px', color: 'var(--text-tertiary, #877E94)' }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-tertiary, #8E87A0)' }}>
                   Render submission unavailable: Requires connected desktop media engine.
                 </div>
               )}
               {isNativeConnected && !selectedRevisionId && (
-                <div style={{ fontSize: '12px', color: 'var(--text-tertiary, #877E94)' }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-tertiary, #8E87A0)' }}>
                   Save an immutable revision before rendering; native will choose the destination location.
                 </div>
               )}
@@ -227,7 +227,7 @@ export const DeliverRoute: React.FC = () => {
       {/* SUBVIEW 2: Preflight Verification */}
       {activeSubview === 'preflight' && (
         <Card padding="md">
-          <h3 style={{ margin: '0 0 14px', fontSize: '15px', color: 'var(--text-primary, #F3F0F6)' }}>
+          <h3 style={{ margin: '0 0 14px', fontSize: '15px', color: 'var(--text-primary, #FAF8FF)' }}>
             Preflight Verification Checklist
           </h3>
           <Table>
@@ -249,7 +249,7 @@ export const DeliverRoute: React.FC = () => {
                       {chk.status === 'passed' ? 'Passed' : chk.id === '2' ? 'Unavailable' : 'Not Checked'}
                     </Badge>
                   </TableCell>
-                  <TableCell style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>{chk.details}</TableCell>
+                  <TableCell style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>{chk.details}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -262,7 +262,7 @@ export const DeliverRoute: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {jobs.length === 0 ? (
             <Card padding="lg" style={{ textAlign: 'center', borderStyle: 'dashed' }}>
-              <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-primary, #F3F0F6)' }}>
+              <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-primary, #FAF8FF)' }}>
                 Render queue is currently empty
               </p>
               <Button size="sm" variant="primary" onClick={() => setActiveSubview('setup')} style={{ marginTop: '12px' }}>
@@ -274,10 +274,10 @@ export const DeliverRoute: React.FC = () => {
               <Card key={job.id} padding="md" raised>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <div>
-                    <h4 style={{ margin: 0, fontSize: '14px', color: 'var(--text-primary, #F3F0F6)' }}>
+                    <h4 style={{ margin: 0, fontSize: '14px', color: 'var(--text-primary, #FAF8FF)' }}>
                       {job.title}
                     </h4>
-                    <span style={{ fontSize: '11px', color: 'var(--text-tertiary, #877E94)' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--text-tertiary, #8E87A0)' }}>
                       ID: {job.id} • Elapsed: {job.elapsedSeconds}s
                     </span>
                   </div>
@@ -285,7 +285,7 @@ export const DeliverRoute: React.FC = () => {
                     {job.status}
                   </Badge>
                 </div>
-                <div style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)', marginBottom: '8px' }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)', marginBottom: '8px' }}>
                   {job.step} {job.totalSteps > 0 && `(Step ${job.currentStep} of ${job.totalSteps})`}
                 </div>
                 {job.error && (
@@ -325,11 +325,11 @@ export const DeliverRoute: React.FC = () => {
       {/* SUBVIEW 4: Delivery Packages */}
       {activeSubview === 'packages' && (
         <Card padding="lg" style={{ textAlign: 'center', borderStyle: 'dashed' }}>
-          <h3 style={{ margin: '0 0 8px', fontSize: '15px', color: 'var(--text-primary, #F3F0F6)' }}>
+          <h3 style={{ margin: '0 0 8px', fontSize: '15px', color: 'var(--text-primary, #FAF8FF)' }}>
             Delivery Manifests & Packages
           </h3>
           {deliveredPackages.length === 0 ? (
-            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
+            <p style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary, #C2BCCC)' }}>
               No delivered master packages yet. Verified master export packages will be cataloged here once rendered by the native engine.
             </p>
           ) : (
@@ -348,10 +348,10 @@ export const DeliverRoute: React.FC = () => {
                   {deliveredPackages.map((pkg, i) => (
                     <TableRow key={i}>
                       <TableCell style={{ fontSize: '12px' }}>{new Date(pkg.exportedAt).toLocaleTimeString()}</TableCell>
-                      <TableCell style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-primary, #F3F0F6)' }}>
+                      <TableCell style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-primary, #FAF8FF)' }}>
                         {pkg.artifactPath}
                       </TableCell>
-                      <TableCell style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-secondary, #BAB3C5)' }}>
+                      <TableCell style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-secondary, #C2BCCC)' }}>
                         {pkg.artifactSha256.substring(0, 16)}...
                       </TableCell>
                       <TableCell>{pkg.durationSeconds}s</TableCell>

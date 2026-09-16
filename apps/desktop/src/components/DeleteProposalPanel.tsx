@@ -124,10 +124,10 @@ export const DeleteProposalPanel: React.FC<DeleteProposalPanelProps> = ({
 
   return (
      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-       <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+       <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
         AI Edit Proposal &mdash; Delete
        </h4>
-       <div style={{ fontSize: '11px', color: 'var(--text-secondary, #BAB3C5)' }}>
+       <div style={{ fontSize: '11px', color: 'var(--text-secondary, #C2BCCC)' }}>
         Local model: {modelLabel}. Proposals are previewed and require explicit acceptance. No edit is written until you Apply.
        </div>
 
@@ -162,26 +162,26 @@ export const DeleteProposalPanel: React.FC<DeleteProposalPanelProps> = ({
        {proposal && !stale && (
          <Card raised padding="sm" data-testid="delete-proposal-preview">
            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-             <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary, #BAB3C5)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+             <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary, #C2BCCC)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               AI Edit Proposal
              </div>
-             <div style={{ fontSize: '12px', color: 'var(--text-primary, #F3F0F6)' }}>
+             <div style={{ fontSize: '12px', color: 'var(--text-primary, #FAF8FF)' }}>
               <strong>Remove clip:</strong> {proposal.clipName}
              </div>
              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px' }}>
-               <div style={{ color: 'var(--text-secondary, #BAB3C5)' }}>
+               <div style={{ color: 'var(--text-secondary, #C2BCCC)' }}>
                 Timeline position: {tlStart}
                </div>
-               <div style={{ color: 'var(--text-secondary, #BAB3C5)' }}>
+               <div style={{ color: 'var(--text-secondary, #C2BCCC)' }}>
                 Timeline duration: {tlDuration}
                </div>
                {asset && (
-                 <div style={{ color: 'var(--text-secondary, #BAB3C5)' }}>
+                 <div style={{ color: 'var(--text-secondary, #C2BCCC)' }}>
                    Source {asset.name}: {srcRange}
                  </div>
                )}
              </div>
-             <div style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+             <div style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
                <strong>Reason:</strong> {proposal.reason}
              </div>
 
@@ -191,8 +191,8 @@ export const DeleteProposalPanel: React.FC<DeleteProposalPanelProps> = ({
               data-testid="delete-media-safe"
               style={{
                 fontSize: '11px',
-                color: 'var(--text-tertiary-panel, #9A91A7)',
-                borderTop: '1px solid var(--border-subtle, #362F40)',
+                color: 'var(--text-tertiary-panel, #9D95B0)',
+                borderTop: '1px solid var(--border-subtle, #1E1E2A)',
                 paddingTop: '6px',
                }}
              >

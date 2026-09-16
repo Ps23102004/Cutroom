@@ -163,33 +163,33 @@ Every interactive and data component must implement concrete visual styling for 
 
 ## 5. Semantic Color Tokens & Theme System
 
-The design uses a restrained, dark plum/charcoal aesthetic with strictly semantic accents. Named rendered foreground/background/control pairs must be measured (>= 4.5:1 normal text; >= 3:1 large text and required control boundaries). No accessibility certification is claimed. Maroon is never dark-on-dark body text; tertiary text is disabled-only until its intended pair passes. Status uses text and icons as well as color.
+The design uses a restrained, near-black "Violet Noir" aesthetic with strictly semantic accents. Named rendered foreground/background/control pairs must be measured (>= 4.5:1 normal text; >= 3:1 large text and required control boundaries). No accessibility certification is claimed. Maroon is never dark-on-dark body text; tertiary text is disabled-only until its intended pair passes. Status uses text and icons as well as color.
 
 ```css
 :root {
-  /* Surface Foundations (Dark Charcoal / Plum) */
-  --bg-app:                #19161F; /* Deepest plum charcoal application backdrop */
-  --bg-panel:              #221E29; /* Primary opaque panel background */
-  --bg-raised:             #2B2533; /* Cards, popovers, elevated modals */
-  --bg-glass:              rgba(34, 30, 41, 0.78); /* Navigation / command glass */
-  --bg-glass-border:       rgba(255, 255, 255, 0.08);
+  /* Surface Foundations (Violet Noir: near-black with a violet undertone) */
+  --bg-app:                #08080C; /* Deepest near-black application backdrop */
+  --bg-panel:              #0F0F16; /* Primary opaque panel background */
+  --bg-raised:             #17171F; /* Cards, popovers, elevated modals */
+  --bg-glass:              rgba(15, 15, 22, 0.78); /* Navigation / command glass */
+  --bg-glass-border:       rgba(255, 255, 255, 0.09);
 
   /* Borders & Dividers */
-  --border-subtle:         #362F40; /* Dividers and nested panel borders */
-  --border-default:        #443B4F; /* Standard component borders */
-  --border-strong:         #635773; /* Emphasized boundaries */
-  --border-focus:          #A18AF7; /* Keyboard focus ring */
+  --border-subtle:         #1E1E2A; /* Dividers and nested panel borders */
+  --border-default:        #2A2A3A; /* Standard component borders */
+  --border-strong:         #3D3D55; /* Emphasized boundaries */
+  --border-focus:          #C4B5FD; /* Keyboard focus ring */
 
   /* Text & Typography */
-  --text-primary:          #F3F0F6; /* Off-white body text; measure actual rendered pair */
-  --text-secondary:        #BAB3C5; /* Muted labels; measure rendered contrast */
-  --text-tertiary:         #877E94; /* Disabled text only; use secondary token for readable timecodes */
-  --text-inverse:          #191320; /* High-contrast text on solid violet/ochre fills */
+  --text-primary:          #FAF8FF; /* White body text; measure actual rendered pair */
+  --text-secondary:        #C2BCCC; /* Muted labels; measure rendered contrast */
+  --text-tertiary:         #8E87A0; /* Disabled text only; use secondary token for readable timecodes */
+  --text-inverse:          #0B0A10; /* High-contrast text on solid violet/ochre fills */
 
-  /* Interaction Accent: Violet */
-  --accent-violet:         #A18AF7; /* Primary action button, active tab, selected clip */
-  --accent-violet-hover:   #B5A3F9; /* Hover state for primary actions */
-  --accent-violet-subtle:  rgba(161, 138, 247, 0.14); /* Selection highlights */
+  /* Interaction Accent: Light Violet */
+  --accent-violet:         #C4B5FD; /* Primary action button, active tab, selected clip */
+  --accent-violet-hover:   #D6CBFF; /* Hover state for primary actions */
+  --accent-violet-subtle:  rgba(196, 181, 253, 0.14); /* Selection highlights */
 
   /* Editorial Accent: Warm Ochre */
   --ochre:                 #D6AE69; /* Character accent, warnings, B-roll clips, draft badges */

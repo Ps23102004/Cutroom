@@ -135,10 +135,10 @@ export const TrimProposalPanel: React.FC<TrimProposalPanelProps> = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+      <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
         AI Edit Proposal &mdash; Trim
       </h4>
-      <div style={{ fontSize: '11px', color: 'var(--text-secondary, #BAB3C5)' }}>
+      <div style={{ fontSize: '11px', color: 'var(--text-secondary, #C2BCCC)' }}>
         Local model: {modelLabel}. Proposals are previewed and require explicit acceptance. No edit is written until you Apply.
       </div>
 
@@ -173,24 +173,24 @@ export const TrimProposalPanel: React.FC<TrimProposalPanelProps> = ({
       {proposal && !stale && (
         <Card raised padding="sm" data-testid="trim-proposal-preview">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary, #BAB3C5)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary, #C2BCCC)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               AI Edit Proposal
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-primary, #F3F0F6)' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-primary, #FAF8FF)' }}>
               <strong>Clip:</strong> {proposal.clipName}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '11px' }}>
-              <div style={{ color: 'var(--text-secondary, #BAB3C5)' }}>
+              <div style={{ color: 'var(--text-secondary, #C2BCCC)' }}>
                 CURRENT {oldIn} &rarr; {oldOut}
               </div>
-              <div style={{ color: 'var(--text-primary, #F3F0F6)' }}>
+              <div style={{ color: 'var(--text-primary, #FAF8FF)' }}>
                 PROPOSED {formatRationalTimecode(proposal.newInTicks, asset.timeBase)} &rarr; {formatRationalTimecode(proposal.newOutTicks, asset.timeBase)}
               </div>
-              <div style={{ color: 'var(--text-secondary, #BAB3C5)' }}>
+              <div style={{ color: 'var(--text-secondary, #C2BCCC)' }}>
                 DIFFERENCE {formatDeltaSeconds(durationDelta, asset)}
               </div>
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
               <strong>Reason:</strong> {proposal.reason}
             </div>
 

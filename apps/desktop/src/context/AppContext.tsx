@@ -424,7 +424,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           outTicks: params.sourceOutTicks,
           timelineStartTicks: start.toString(),
           timelineDurationTicks: duration.toString(),
-          color: 'var(--accent-violet, #A18AF7)',
+          color: 'var(--accent-violet, #C4B5FD)',
           isFixture: true,
         };
         const nextDuration = start + duration > BigInt(prev.durationTicks) ? start + duration : BigInt(prev.durationTicks);

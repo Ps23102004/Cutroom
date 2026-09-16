@@ -38,7 +38,7 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({ items }) => {
                       border: 'none',
                       padding: 0,
                       fontSize: '13px',
-                      color: 'var(--text-secondary, #BAB3C5)',
+                      color: 'var(--text-secondary, #C2BCCC)',
                       cursor: 'pointer',
                       outline: 'none',
                     }}
@@ -51,7 +51,7 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({ items }) => {
                     style={{
                       fontSize: '13px',
                       fontWeight: isLast ? 600 : 400,
-                      color: isLast ? 'var(--text-primary, #F3F0F6)' : 'var(--text-secondary, #BAB3C5)',
+                      color: isLast ? 'var(--text-primary, #FAF8FF)' : 'var(--text-secondary, #C2BCCC)',
                     }}
                   >
                     {item.label}
@@ -59,7 +59,7 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({ items }) => {
                 )}
               </li>
               {!isLast && (
-                <li aria-hidden="true" style={{ color: 'var(--text-tertiary, #877E94)', display: 'flex' }}>
+                <li aria-hidden="true" style={{ color: 'var(--text-tertiary, #8E87A0)', display: 'flex' }}>
                   <ChevronRightIcon size={14} />
                 </li>
               )}

@@ -12,7 +12,7 @@ export const Table: React.FC<TableProps> = ({ children, style, className = '', .
         borderCollapse: 'collapse',
         textAlign: 'left',
         fontSize: '13px',
-        color: 'var(--text-primary, #F3F0F6)',
+        color: 'var(--text-primary, #FAF8FF)',
         ...style,
       }}
       className={`cutroom-table ${className}`}
@@ -26,8 +26,8 @@ export const Table: React.FC<TableProps> = ({ children, style, className = '', .
 export const TableHead: React.FC<React.HTMLAttributes<HTMLTableSectionElement>> = ({ children, style, ...props }) => (
   <thead
     style={{
-      backgroundColor: 'var(--bg-panel, #221E29)',
-      borderBottom: '1px solid var(--border-default, #443B4F)',
+      backgroundColor: 'var(--bg-panel, #0F0F16)',
+      borderBottom: '1px solid var(--border-default, #2A2A3A)',
       ...style,
     }}
     {...props}
@@ -43,7 +43,7 @@ export const TableBody: React.FC<React.HTMLAttributes<HTMLTableSectionElement>> 
 export const TableRow: React.FC<React.HTMLAttributes<HTMLTableRowElement>> = ({ children, style, ...props }) => (
   <tr
     style={{
-      borderBottom: '1px solid var(--border-subtle, #362F40)',
+      borderBottom: '1px solid var(--border-subtle, #1E1E2A)',
       transition: 'background-color 100ms ease',
       ...style,
     }}
@@ -59,7 +59,7 @@ export const TableHeaderCell: React.FC<React.ThHTMLAttributes<HTMLTableCellEleme
       padding: '10px 14px',
       fontSize: '12px',
       fontWeight: 600,
-      color: 'var(--text-secondary, #BAB3C5)',
+      color: 'var(--text-secondary, #C2BCCC)',
       textTransform: 'uppercase',
       letterSpacing: '0.04em',
       ...style,
@@ -75,7 +75,7 @@ export const TableCell: React.FC<React.TdHTMLAttributes<HTMLTableCellElement>> =
     style={{
       padding: '12px 14px',
       fontSize: '13px',
-      color: 'var(--text-primary, #F3F0F6)',
+      color: 'var(--text-primary, #FAF8FF)',
       verticalAlign: 'middle',
       ...style,
     }}

@@ -100,10 +100,10 @@ export const AIGeneratorPanel: React.FC<AIGenerationModalProps> = ({
       <Card padding="lg" raised style={{ width: '100%', maxWidth: '640px', maxHeight: '90vh', overflowY: 'auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: 'var(--text-primary, #F3F0F6)' }}>
+            <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: 'var(--text-primary, #FAF8FF)' }}>
               AI Asset Generator & Model Connector
             </h3>
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)', marginTop: '2px' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)', marginTop: '2px' }}>
               Connect local models (Ollama, MLX, MiniMax, Llama) or custom APIs (OpenAI, Runway, ElevenLabs)
             </div>
           </div>
@@ -194,7 +194,7 @@ export const AIGeneratorPanel: React.FC<AIGenerationModalProps> = ({
           )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary, #BAB3C5)' }}>
+            <label style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-secondary, #C2BCCC)' }}>
               Generation Prompt
             </label>
             <textarea
@@ -211,10 +211,10 @@ export const AIGeneratorPanel: React.FC<AIGenerationModalProps> = ({
               style={{
                 width: '100%',
                 padding: '10px 12px',
-                backgroundColor: 'var(--bg-panel, #221E29)',
-                border: '1px solid var(--border-default, #443B4F)',
+                backgroundColor: 'var(--bg-panel, #0F0F16)',
+                border: '1px solid var(--border-default, #2A2A3A)',
                 borderRadius: '8px',
-                color: 'var(--text-primary, #F3F0F6)',
+                color: 'var(--text-primary, #FAF8FF)',
                 fontSize: '13px',
                 resize: 'vertical',
                 boxSizing: 'border-box',

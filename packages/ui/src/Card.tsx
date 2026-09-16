@@ -25,8 +25,8 @@ export const Card: React.FC<CardProps> = ({
   return (
     <div
       style={{
-        backgroundColor: raised ? 'var(--bg-raised, #2B2533)' : 'var(--bg-panel, #221E29)',
-        border: bordered ? '1px solid var(--border-default, #443B4F)' : 'none',
+        backgroundColor: raised ? 'var(--bg-raised, #17171F)' : 'var(--bg-panel, #0F0F16)',
+        border: bordered ? '1px solid var(--border-default, #2A2A3A)' : 'none',
         borderRadius: '12px',
         padding: paddingMap[padding],
         boxSizing: 'border-box',

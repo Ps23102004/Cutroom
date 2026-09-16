@@ -9,8 +9,8 @@ html, body {
   padding: 0;
   width: 100%;
   height: 100%;
-  background-color: var(--bg-app, #19161F);
-  color: var(--text-primary, #F3F0F6);
+  background-color: var(--bg-app, #08080C);
+  color: var(--text-primary, #FAF8FF);
   font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
   font-size: 14px;
   line-height: 1.43;
@@ -27,7 +27,7 @@ html, body {
 
 /* Accessible focus ring for keyboard navigation */
 :focus-visible {
-  outline: 2px solid var(--border-focus, #A18AF7) !important;
+  outline: 2px solid var(--border-focus, #C4B5FD) !important;
   outline-offset: 2px !important;
 }
 
@@ -38,16 +38,16 @@ html, body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-app, #19161F);
+  background: var(--bg-app, #08080C);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-default, #443B4F);
+  background: var(--border-default, #2A2A3A);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--border-strong, #635773);
+  background: var(--border-strong, #3D3D55);
 }
 
 /* Animations */
@@ -59,6 +59,76 @@ html, body {
 @keyframes cutroom-slide-left {
   from { transform: translateX(100%); }
   to { transform: translateX(0); }
+}
+
+@keyframes cutroom-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes cutroom-pop-in {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes cutroom-slide-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cutroom-pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(196, 181, 253, 0); }
+  50% { box-shadow: 0 0 0 4px rgba(196, 181, 253, 0.12); }
+}
+
+/* Animation utility classes */
+.cutroom-animate-fade-in {
+  animation: cutroom-fade-in var(--motion-fast, 150ms) var(--ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.cutroom-animate-pop-in {
+  animation: cutroom-pop-in var(--motion-base, 220ms) var(--ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+.cutroom-animate-slide-up {
+  animation: cutroom-slide-up var(--motion-base, 220ms) var(--ease-standard, cubic-bezier(0.16, 1, 0.3, 1));
+}
+
+/* Micro-interactions for shared components */
+.cutroom-button {
+  transition: transform var(--motion-fast, 150ms) var(--ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
+              box-shadow var(--motion-fast, 150ms) var(--ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
+              background-color var(--motion-fast, 150ms) ease,
+              border-color var(--motion-fast, 150ms) ease;
+}
+
+.cutroom-button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.cutroom-button-primary:hover:not(:disabled) {
+  box-shadow: 0 4px 16px rgba(196, 181, 253, 0.25);
+}
+
+.cutroom-card {
+  transition: transform var(--motion-base, 220ms) var(--ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
+              box-shadow var(--motion-base, 220ms) var(--ease-standard, cubic-bezier(0.16, 1, 0.3, 1)),
+              border-color var(--motion-fast, 150ms) ease;
+}
+
+.cutroom-card-hoverable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  border-color: var(--border-strong, #3D3D55);
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Utility classes */

@@ -63,8 +63,8 @@ export const Drawer: React.FC<DrawerProps> = ({
           width: '100%',
           maxWidth: width,
           height: '100%',
-          backgroundColor: 'var(--bg-panel, #221E29)',
-          borderLeft: '1px solid var(--border-strong, #635773)',
+          backgroundColor: 'var(--bg-panel, #0F0F16)',
+          borderLeft: '1px solid var(--border-strong, #3D3D55)',
           boxShadow: '-8px 0 32px rgba(0, 0, 0, 0.6)',
           display: 'flex',
           flexDirection: 'column',
@@ -80,8 +80,8 @@ export const Drawer: React.FC<DrawerProps> = ({
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '18px 24px',
-            borderBottom: '1px solid var(--border-subtle, #362F40)',
-            backgroundColor: 'var(--bg-raised, #2B2533)',
+            borderBottom: '1px solid var(--border-subtle, #1E1E2A)',
+            backgroundColor: 'var(--bg-raised, #17171F)',
           }}
         >
           <div>
@@ -91,13 +91,13 @@ export const Drawer: React.FC<DrawerProps> = ({
                 margin: 0,
                 fontSize: '17px',
                 fontWeight: 600,
-                color: 'var(--text-primary, #F3F0F6)',
+                color: 'var(--text-primary, #FAF8FF)',
               }}
             >
               {title}
             </h2>
             {description && (
-              <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary, #BAB3C5)' }}>
+              <p style={{ margin: '4px 0 0', fontSize: '13px', color: 'var(--text-secondary, #C2BCCC)' }}>
                 {description}
               </p>
             )}
@@ -109,7 +109,7 @@ export const Drawer: React.FC<DrawerProps> = ({
             style={{
               background: 'transparent',
               border: 'none',
-              color: 'var(--text-secondary, #BAB3C5)',
+              color: 'var(--text-secondary, #C2BCCC)',
               cursor: 'pointer',
               padding: '6px',
               borderRadius: '6px',

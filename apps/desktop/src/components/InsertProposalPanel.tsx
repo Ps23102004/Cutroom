@@ -181,10 +181,10 @@ export const InsertProposalPanel: React.FC<InsertProposalPanelProps> = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-      <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+      <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
         AI Edit Proposal &mdash; Insert
       </h4>
-      <div style={{ fontSize: '11px', color: 'var(--text-secondary, #BAB3C5)' }}>
+      <div style={{ fontSize: '11px', color: 'var(--text-secondary, #C2BCCC)' }}>
         Local model: {modelLabel}. Proposals are previewed and require explicit acceptance. No edit is written until you Apply.
       </div>
 
@@ -206,7 +206,7 @@ export const InsertProposalPanel: React.FC<InsertProposalPanelProps> = ({
       </Button>
 
       {assets.length === 0 && (
-        <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>
+        <div style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)' }}>
           Import a source asset first — AI can only insert from assets already in this project.
         </div>
       )}
@@ -226,10 +226,10 @@ export const InsertProposalPanel: React.FC<InsertProposalPanelProps> = ({
       {proposal && !stale && preview && (
         <Card raised padding="sm" data-testid="insert-proposal-preview">
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary, #BAB3C5)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary, #C2BCCC)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               AI Edit Proposal
             </div>
-            <div style={{ fontSize: '12px', color: 'var(--text-primary, #F3F0F6)' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-primary, #FAF8FF)' }}>
               <strong>Source:</strong> {proposal.assetName} &mdash; {preview.srcRange}
             </div>
             {preview.error ? (
@@ -238,20 +238,20 @@ export const InsertProposalPanel: React.FC<InsertProposalPanelProps> = ({
               </div>
             ) : (
               <>
-                <div style={{ fontSize: '12px', color: 'var(--text-primary, #F3F0F6)' }}>
+                <div style={{ fontSize: '12px', color: 'var(--text-primary, #FAF8FF)' }}>
                   <strong>Insert:</strong> {preview.destination}
                 </div>
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary, #BAB3C5)' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-secondary, #C2BCCC)' }}>
                   Timeline range: {preview.range}
                 </div>
                 {resultingOrder && (
-                  <div style={{ fontSize: '11px', color: 'var(--text-secondary, #BAB3C5)' }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary, #C2BCCC)' }}>
                     <strong>Result:</strong> {resultingOrder}
                   </div>
                 )}
               </>
             )}
-            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+            <div style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
               <strong>Reason:</strong> {proposal.reason}
             </div>
 
@@ -261,8 +261,8 @@ export const InsertProposalPanel: React.FC<InsertProposalPanelProps> = ({
               data-testid="insert-media-safe"
               style={{
                 fontSize: '11px',
-                color: 'var(--text-tertiary-panel, #9A91A7)',
-                borderTop: '1px solid var(--border-subtle, #362F40)',
+                color: 'var(--text-tertiary-panel, #9D95B0)',
+                borderTop: '1px solid var(--border-subtle, #1E1E2A)',
                 paddingTop: '6px',
               }}
             >

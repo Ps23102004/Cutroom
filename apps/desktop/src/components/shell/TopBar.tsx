@@ -34,7 +34,7 @@ export const TopBar: React.FC = () => {
         minHeight: '56px',
         maxHeight: '56px',
         padding: '0 24px',
-        backgroundColor: 'var(--bg-glass, rgba(34, 30, 41, 0.78))',
+        backgroundColor: 'var(--bg-glass, rgba(15, 15, 22, 0.78))',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
         borderBottom: '1px solid var(--bg-glass-border, rgba(255, 255, 255, 0.08))',
@@ -94,12 +94,12 @@ export const TopBar: React.FC = () => {
               gap: '8px',
               padding: '4px 10px',
               borderRadius: '6px',
-              backgroundColor: 'var(--bg-raised, #2B2533)',
-              border: '1px solid var(--border-default, #443B4F)',
+              backgroundColor: 'var(--bg-raised, #17171F)',
+              border: '1px solid var(--border-default, #2A2A3A)',
             }}
           >
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>Project:</span>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary, #F3F0F6)' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>Project:</span>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
               {activeProject.name}
             </span>
             <Badge variant={activeProject.status}>{activeProject.status.replace('_', ' ')}</Badge>
@@ -108,7 +108,7 @@ export const TopBar: React.FC = () => {
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: 'var(--text-tertiary, #877E94)',
+                color: 'var(--text-tertiary, #8E87A0)',
                 cursor: 'pointer',
                 fontSize: '12px',
                 padding: '2px 4px',
@@ -119,7 +119,7 @@ export const TopBar: React.FC = () => {
             </button>
           </div>
         ) : (
-          <span style={{ fontSize: '12px', color: 'var(--text-tertiary, #877E94)' }}>
+          <span style={{ fontSize: '12px', color: 'var(--text-tertiary, #8E87A0)' }}>
             No project active
           </span>
         )}

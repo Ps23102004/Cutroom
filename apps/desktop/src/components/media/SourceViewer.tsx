@@ -226,7 +226,7 @@ export const SourceViewer: React.FC<SourceViewerProps> = ({
       {/* Viewer Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary, #F3F0F6)' }}>
+          <span style={{ fontWeight: 600, fontSize: '14px', color: 'var(--text-primary, #FAF8FF)' }}>
             {asset.name}
           </span>
           <Badge variant="neutral">
@@ -236,7 +236,7 @@ export const SourceViewer: React.FC<SourceViewerProps> = ({
             {asset.importType.toUpperCase()}
           </Badge>
         </div>
-        <div className="font-mono" style={{ fontSize: '12px', color: 'var(--text-secondary, #BAB3C5)' }}>
+        <div className="font-mono" style={{ fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
           Total: {formatRationalTimecode(asset.durationTicks, asset.timeBase, assetFps)}
         </div>
       </div>
@@ -246,7 +246,7 @@ export const SourceViewer: React.FC<SourceViewerProps> = ({
         style={{
           backgroundColor: '#0E0C12',
           borderRadius: '6px',
-          border: '1px solid var(--border-default, #443B4F)',
+          border: '1px solid var(--border-default, #2A2A3A)',
           height: aspectRatio === '9:16' ? '280px' : '200px',
           display: 'flex',
           flexDirection: 'column',
@@ -257,10 +257,10 @@ export const SourceViewer: React.FC<SourceViewerProps> = ({
         }}
       >
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', textAlign: 'center', zIndex: 2 }}>
-          <span className="font-mono" style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary, #F3F0F6)' }}>
+          <span className="font-mono" style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary, #FAF8FF)' }}>
             {formatRationalTimecode(playheadTicks, asset.timeBase, assetFps)}
           </span>
-          <span style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9A91A7)' }}>
+          <span style={{ fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)' }}>
             Frame {String(frameCount)} • Tick {playheadTicks}
           </span>
         </div>
@@ -289,7 +289,7 @@ export const SourceViewer: React.FC<SourceViewerProps> = ({
           onChange={(e) => setPlayhead(BigInt(e.target.value))}
           style={{
             width: '100%',
-            accentColor: 'var(--accent-violet, #A18AF7)',
+            accentColor: 'var(--accent-violet, #C4B5FD)',
             height: '4px',
             cursor: 'pointer',
           }}
@@ -300,9 +300,9 @@ export const SourceViewer: React.FC<SourceViewerProps> = ({
           style={{
             position: 'relative',
             height: '16px',
-            backgroundColor: 'var(--bg-app, #19161F)',
+            backgroundColor: 'var(--bg-app, #08080C)',
             borderRadius: '4px',
-            border: '1px solid var(--border-subtle, #362F40)',
+            border: '1px solid var(--border-subtle, #1E1E2A)',
             overflow: 'hidden',
           }}
           aria-hidden="true"
@@ -314,9 +314,9 @@ export const SourceViewer: React.FC<SourceViewerProps> = ({
               width: `${Math.max(0, outPercent - inPercent)}%`,
               top: 0,
               bottom: 0,
-              backgroundColor: 'rgba(161, 138, 247, 0.28)',
-              borderLeft: '2px solid var(--accent-violet, #A18AF7)',
-              borderRight: '2px solid var(--accent-violet, #A18AF7)',
+              backgroundColor: 'rgba(196, 181, 253, 0.28)',
+              borderLeft: '2px solid var(--accent-violet, #C4B5FD)',
+              borderRight: '2px solid var(--accent-violet, #C4B5FD)',
             }}
           />
           <div
@@ -334,11 +334,11 @@ export const SourceViewer: React.FC<SourceViewerProps> = ({
 
         {/* Range Timecode Display */}
         <div
-          style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '11px', color: 'var(--text-secondary, #BAB3C5)' }}
+          style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', fontSize: '11px', color: 'var(--text-secondary, #C2BCCC)' }}
           className="font-mono"
         >
           <span>In {formatRationalTimecode(inTicks, asset.timeBase, assetFps)}</span>
-          <span style={{ color: 'var(--accent-violet, #A18AF7)' }}>
+          <span style={{ color: 'var(--accent-violet, #C4B5FD)' }}>
             {formatRationalTimecode(rangeDurationTicks.toString(), asset.timeBase, assetFps)} • {String(rangeDurationTicks)} ticks
           </span>
           <span>Out {formatRationalTimecode(outTicks, asset.timeBase, assetFps)}</span>
@@ -395,10 +395,10 @@ export const SourceViewer: React.FC<SourceViewerProps> = ({
             fontSize: '12px',
             color:
               feedbackTone === 'ok'
-                ? 'var(--accent-green, #98C379)'
+                ? 'var(--positive, #A7D7A1)'
                 : feedbackTone === 'error'
                   ? 'var(--destructive, #E06C75)'
-                  : 'var(--text-secondary, #BAB3C5)',
+                  : 'var(--text-secondary, #C2BCCC)',
             marginTop: '2px',
           }}
         >
@@ -406,7 +406,7 @@ export const SourceViewer: React.FC<SourceViewerProps> = ({
         </div>
       )}
 
-      <div style={{ fontSize: '10px', color: 'var(--text-tertiary-panel, #9A91A7)', opacity: 0.85 }}>
+      <div style={{ fontSize: '10px', color: 'var(--text-tertiary-panel, #9D95B0)', opacity: 0.85 }}>
         Shortcuts: [I] In • [O] Out • [Space] Play/Pause • [←][→] Step frame • [Home] Jump to In • [End] Jump to Out
       </div>
     </Card>
