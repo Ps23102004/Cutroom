@@ -15,6 +15,7 @@ import { DeleteProposalPanel } from '../components/DeleteProposalPanel';
 import { InsertProposalPanel } from '../components/InsertProposalPanel';
 import { ReplaceProposalPanel } from '../components/ReplaceProposalPanel';
 import { EditPlanProposalPanel } from '../components/EditPlanProposalPanel';
+import { ColorInspectorPanel } from '../components/ColorInspectorPanel';
 import { AIGeneratorPanel } from '../components/AIGeneratorPanel';
 
 export function mapPlayheadToSourceBoundary(
@@ -79,7 +80,7 @@ function validateSourceRange(
   }
 }
 
-type InspectorMode = 'caption' | 'audio' | 'brand' | 'ai_assistant';
+type InspectorMode = 'caption' | 'audio' | 'brand' | 'ai_assistant' | 'color';
 
 export const StudioRoute: React.FC = () => {
   const {
@@ -95,6 +96,7 @@ export const StudioRoute: React.FC = () => {
     removeClip,
     replaceClip,
     reorderClips,
+    updateClipColor,
     createRevision,
     navigate,
     isFixtureMode,
@@ -378,6 +380,7 @@ export const StudioRoute: React.FC = () => {
   const totalDuration = BigInt(composition?.durationTicks || '36000');
   const inspectorTabs = [
     { id: 'audio', label: 'Audio Levels' },
+    { id: 'color', label: 'Color' },
     { id: 'caption', label: 'Captions' },
     { id: 'brand', label: 'Brand Presets' },
     { id: 'ai_assistant', label: 'AI Proposals' },
@@ -685,8 +688,23 @@ export const StudioRoute: React.FC = () => {
               </div>
             )}
 
-            {/* CAPTIONS INSPECTOR */}
-            {activeInspector === 'caption' && (
+            {/* COLOR INSPECTOR — per-clip color grade (native composition.apply action "setColor") */}
+            {activeInspector === 'color' && (
+              !selectedClip || !composition ? (
+                <div style={{ padding: '8px', backgroundColor: 'var(--bg-app, #08080C)', borderRadius: '6px', fontSize: '11px', color: 'var(--text-tertiary-panel, #9D95B0)' }}>
+                  Select a timeline clip to grade its color.
+                </div>
+              ) : (
+                <ColorInspectorPanel
+                  key={`${selectedClip.id}:${composition.version}`}
+                  clip={selectedClip}
+                  projectId={activeProject?.id ?? ''}
+                  updateClipColor={updateClipColor}
+                />
+              )
+            )}
+
+            {/* CAPTIONS INSPECTOR */}            {activeInspector === 'caption' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 600, color: 'var(--text-primary, #FAF8FF)' }}>
                   Caption Styling

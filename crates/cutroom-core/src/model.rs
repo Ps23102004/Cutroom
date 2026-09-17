@@ -1,4 +1,4 @@
-use std::cmp::Ordering;
+use std::{cmp::Ordering, path::PathBuf};
 
 use serde::{Deserialize, Serialize};
 
@@ -258,7 +258,237 @@ pub struct Track {
     pub is_locked: bool,
 }
 
+/// Per-clip color grade applied in the pro render pipeline, after input
+/// normalization (de-log / HDR tone map) and before the output encode.
+/// All values are validated by the media engine; out-of-range values are
+/// rejected rather than clamped.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ColorGrade {
+    /// Exposure compensation in stops. Range: -3.0..=3.0.
+    #[serde(default)]
+    pub exposure_ev: f32,
+    /// Contrast multiplier. Range: 0.1..=4.0.
+    #[serde(default = "default_contrast")]
+    pub contrast: f32,
+    /// Saturation multiplier. Range: 0.0..=3.0.
+    #[serde(default = "default_saturation")]
+    pub saturation: f32,
+    /// White-balance temperature shift. >0 warms, <0 cools. Range: -1.0..=1.0.
+    #[serde(default)]
+    pub wb_temp: f32,
+    /// White-balance tint shift. >0 magenta, <0 green. Range: -1.0..=1.0.
+    #[serde(default)]
+    pub wb_tint: f32,
+    /// Optional creative `.cube` LUT applied last in the grade chain.
+    #[serde(default)]
+    pub lut: Option<LutSpec>,
+}
+
+fn default_contrast() -> f32 {
+    1.0
+}
+
+fn default_saturation() -> f32 {
+    1.0
+}
+
+impl Default for ColorGrade {
+    /// Neutral grade: every adjustment at its identity value.
+    fn default() -> Self {
+        Self {
+            exposure_ev: 0.0,
+            contrast: 1.0,
+            saturation: 1.0,
+            wb_temp: 0.0,
+            wb_tint: 0.0,
+            lut: None,
+        }
+    }
+}
+
+impl ColorGrade {
+    /// True when every adjustment is at its neutral default.
+    pub fn is_neutral(&self) -> bool {
+        self.exposure_ev == 0.0
+            && self.contrast == 1.0
+            && self.saturation == 1.0
+            && self.wb_temp == 0.0
+            && self.wb_tint == 0.0
+            && self.lut.is_none()
+    }
+
+    /// Rejects out-of-range grades at edit time so bad values never reach
+    /// the render queue. The media engine re-validates before rendering.
+    pub fn validate(&self) -> Result<()> {
+        let range = |name: &str, v: f32, lo: f32, hi: f32| {
+            if v.is_finite() && v >= lo && v <= hi {
+                Ok(())
+            } else {
+                Err(CoreError::InvalidInput(format!(
+                    "color grade {name} must be within {lo}..={hi}"
+                )))
+            }
+        };
+        range("exposure_ev", self.exposure_ev, -3.0, 3.0)?;
+        range("contrast", self.contrast, 0.1, 4.0)?;
+        range("saturation", self.saturation, 0.0, 3.0)?;
+        range("wb_temp", self.wb_temp, -1.0, 1.0)?;
+        range("wb_tint", self.wb_tint, -1.0, 1.0)?;
+        if let Some(lut) = &self.lut {
+            if lut.path.as_os_str().is_empty() {
+                return Err(CoreError::InvalidInput(
+                    "color grade LUT path must not be empty".into(),
+                ));
+            }
+            if lut.expected_sha256.trim().is_empty() {
+                return Err(CoreError::InvalidInput(
+                    "color grade LUT must carry its expected SHA-256".into(),
+                ));
+            }
+        }
+        Ok(())
+    }
+}
+
+/// A user-supplied `.cube` 3D LUT. The path is canonicalized and its SHA-256
+/// verified before and after every render that uses it.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LutSpec {
+    pub path: PathBuf,
+    pub expected_sha256: String,
+}
+
+/// Declared input color space for a clip. `Auto` probes the file's tagged
+/// transfer/primaries; explicit log profiles select the de-log path.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum InputColorSpace {
+    #[default]
+    Auto,
+    Rec709,
+    Bt2020Sdr,
+    SLog3,
+    VLog,
+    CLog3,
+    PqHdr,
+    HlgHdr,
+}
+
+/// Per-clip color state stored on the timeline clip.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ClipColor {
+    #[serde(default)]
+    pub input_color_space: InputColorSpace,
+    #[serde(default)]
+    pub grade: ColorGrade,
+}
+
+impl ClipColor {
+    pub fn validate(&self) -> Result<()> {
+        self.grade.validate()
+    }
+}
+
+/// Output video codec for a pro render preset.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VideoCodec {
+    H264,
+    H265,
+}
+
+/// Output color pipeline: SDR Rec.709 or HDR10 (PQ/BT.2020 with static
+/// metadata). HDR10 requires the H.265 codec and HDR (PQ) sources.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OutputColor {
+    #[default]
+    SdrRec709,
+    Hdr10,
+}
+
+/// A validated render output preset: resolution, frame rate, codec, color.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OutputSpec {
+    pub width: u32,
+    pub height: u32,
+    pub frame_rate: RationalTimeBase,
+    pub codec: VideoCodec,
+    pub color: OutputColor,
+}
+
+impl OutputSpec {
+    /// Legacy preset: 1080p24 H.264 SDR (the original B0 pipeline output).
+    pub fn sd_1080p24_h264() -> Self {
+        Self {
+            width: 1920,
+            height: 1080,
+            frame_rate: RationalTimeBase { num: 24, den: 1 },
+            codec: VideoCodec::H264,
+            color: OutputColor::SdrRec709,
+        }
+    }
+
+    pub fn preset(name: &str) -> Option<Self> {
+        let frame_rate = |num: i64| RationalTimeBase { num, den: 1 };
+        match name {
+            "1080p_sdr" => Some(Self::sd_1080p24_h264()),
+            "720p_h264" => Some(Self {
+                width: 1280,
+                height: 720,
+                frame_rate: frame_rate(30),
+                codec: VideoCodec::H264,
+                color: OutputColor::SdrRec709,
+            }),
+            "1080p_h264" => Some(Self {
+                width: 1920,
+                height: 1080,
+                frame_rate: frame_rate(30),
+                codec: VideoCodec::H264,
+                color: OutputColor::SdrRec709,
+            }),
+            "2160p_h265" => Some(Self {
+                width: 3840,
+                height: 2160,
+                frame_rate: frame_rate(30),
+                codec: VideoCodec::H265,
+                color: OutputColor::SdrRec709,
+            }),
+            "2160p60_h265" => Some(Self {
+                width: 3840,
+                height: 2160,
+                frame_rate: frame_rate(60),
+                codec: VideoCodec::H265,
+                color: OutputColor::SdrRec709,
+            }),
+            "2160p_hdr10" => Some(Self {
+                width: 3840,
+                height: 2160,
+                frame_rate: frame_rate(30),
+                codec: VideoCodec::H265,
+                color: OutputColor::Hdr10,
+            }),
+            _ => None,
+        }
+    }
+
+    /// All presets the Deliver panel may offer, in display order.
+    pub fn preset_names() -> &'static [&'static str] {
+        &[
+            "1080p_sdr",
+            "720p_h264",
+            "1080p_h264",
+            "2160p_h265",
+            "2160p60_h265",
+            "2160p_hdr10",
+        ]
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ClipInput {
     pub id: Option<String>,
     pub track_id: String,
@@ -269,9 +499,12 @@ pub struct ClipInput {
     pub timeline_start: RationalTime,
     pub timeline_duration: RationalTime,
     pub sort_order: i64,
+    /// Per-clip color state. Defaults to neutral when omitted.
+    #[serde(default)]
+    pub color: ClipColor,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Clip {
     pub id: String,
     pub track_id: String,
@@ -282,9 +515,12 @@ pub struct Clip {
     pub timeline_start_ticks: String,
     pub timeline_duration_ticks: String,
     pub sort_order: i64,
+    /// Per-clip color state. Defaults to neutral; old payloads still parse.
+    #[serde(default)]
+    pub color: ClipColor,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Composition {
     pub id: String,
     pub project_id: String,
@@ -296,28 +532,29 @@ pub struct Composition {
     pub clips: Vec<Clip>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "operation", rename_all = "snake_case")]
 pub enum TimelineOperation {
     AddTrack { track: TrackInput },
     AddClip { clip: ClipInput },
     UpdateClip { clip: ClipInput },
     RemoveClip { clip_id: String },
+    SetClipColor { clip_id: String, color: ClipColor },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CompositionMutation {
     pub operations: Vec<TimelineOperation>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct MutationResult {
     pub composition: Composition,
     /// `true` means this came from an existing durable operation receipt.
     pub replayed: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct CompositionSnapshot {
     pub composition_id: String,
     pub time_base: RationalTimeBase,
@@ -336,7 +573,7 @@ impl From<&Composition> for CompositionSnapshot {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Revision {
     pub id: String,
     pub project_id: String,
@@ -396,22 +633,35 @@ pub struct JobEnqueue {
     pub project_id: String,
     pub revision_id: String,
     pub dependency_job_id: Option<String>,
+    /// Requested output preset. `None` means the legacy 1080p_sdr pipeline.
+    #[serde(default)]
+    pub output: Option<OutputSpec>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RenderJobSource {
     pub source: String,
     pub expected_sha256: String,
     pub start: RationalTime,
     pub end: RationalTime,
+    /// Per-clip color state copied from the revision snapshot.
+    #[serde(default)]
+    pub color: ClipColor,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RenderJobSpec {
     pub project_id: String,
     pub revision_id: String,
     /// The immutable revision's deterministic clip order. B0 media accepts two clips.
     pub clips: [RenderJobSource; 2],
+    /// Output preset. Defaults to the legacy 1080p_sdr pipeline for old rows.
+    #[serde(default = "default_render_output")]
+    pub output: OutputSpec,
+}
+
+fn default_render_output() -> OutputSpec {
+    OutputSpec::sd_1080p24_h264()
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

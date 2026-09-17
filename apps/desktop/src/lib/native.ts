@@ -137,4 +137,5 @@ export const NATIVE_COMMANDS = {
   HEALTH_GET: 'health.get',
   BRIEF_GET: 'brief.get',
   BRIEF_SET: 'brief.set',
+  LUT_PICK: 'lut.pick',
 } as const;

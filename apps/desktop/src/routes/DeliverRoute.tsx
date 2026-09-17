@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Button, Card, Tabs, Badge, Select, Table, TableHead, TableRow, TableHeaderCell, TableBody, TableCell } from '@cutroom/ui';
-import { OutputPreset, PreflightItem, DeliveryManifest } from '../lib/contracts';
+import { OutputPreset, PreflightItem, DeliveryManifest, OUTPUT_PRESET_SPECS } from '../lib/contracts';
 import { validateAndCreateDeliveryManifest } from '../lib/deliveryArchive';
 
 type DeliverSubview = 'setup' | 'preflight' | 'queue' | 'packages';
@@ -175,20 +175,21 @@ export const DeliverRoute: React.FC = () => {
               label="Select Target Output Preset"
               value={selectedPreset}
               onChange={(e) => setSelectedPreset(e.target.value as OutputPreset)}
-              options={[
-                { value: '1080p_sdr', label: '4K / 1080p Master — H.264/AAC' },
-              ]}
+              options={(Object.keys(OUTPUT_PRESET_SPECS) as OutputPreset[]).map((preset) => ({
+                value: preset,
+                label: OUTPUT_PRESET_SPECS[preset].label,
+              }))}
             />
 
             <div style={{ padding: '16px', backgroundColor: 'var(--bg-app, #08080C)', borderRadius: '8px', border: '1px solid var(--border-default, #2A2A3A)' }}>
               <div style={{ fontWeight: 600, fontSize: '13px', color: 'var(--text-primary, #FAF8FF)', marginBottom: '8px' }}>
-                IMPLEMENTED RENDER SPECIFICATION
+                IMPLEMENTED RENDER SPECIFICATION — {OUTPUT_PRESET_SPECS[selectedPreset].label}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', fontSize: '12px', color: 'var(--text-secondary, #C2BCCC)' }}>
                 <div>Container: <strong>MP4</strong></div>
-                <div>Video Codec: <strong>H.264 (libx264), 1080p24</strong></div>
-                <div>Audio Profile: <strong>AAC</strong></div>
-                <div>Color Primaries: <strong>Rec.709 SDR</strong></div>
+                <div>Video Codec: <strong>{OUTPUT_PRESET_SPECS[selectedPreset].video}</strong></div>
+                <div>Audio Profile: <strong>{OUTPUT_PRESET_SPECS[selectedPreset].audio}</strong></div>
+                <div>Color Primaries: <strong>{OUTPUT_PRESET_SPECS[selectedPreset].color}</strong></div>
                 <div>Source ranges: <strong>Frame/sample aligned</strong></div>
                 <div>Preflight Status: <strong style={{ color: 'var(--text-secondary, #C2BCCC)' }}>Unavailable (Not Checked)</strong></div>
               </div>

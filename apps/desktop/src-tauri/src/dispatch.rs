@@ -11,9 +11,9 @@ use std::{
 };
 
 use cutroom_core::{
-    Asset, AssetInput, Clip, ClipInput, Composition, CompositionMutation, CoreError, Database,
-    JobEnqueue, JobRecord, NativeReceipt, NativeReceiptLookup, Project, ProjectInput, RationalTime,
-    RationalTimeBase, Revision, TimelineOperation, Track, TrackInput,
+    Asset, AssetInput, Clip, ClipColor, ClipInput, Composition, CompositionMutation, CoreError,
+    Database, JobEnqueue, JobRecord, NativeReceipt, NativeReceiptLookup, OutputSpec, Project,
+    ProjectInput, RationalTime, RationalTimeBase, Revision, TimelineOperation, Track, TrackInput,
 };
 use cutroom_jobs::JobEngine;
 use cutroom_media::{CancellationToken, MediaEngine};
@@ -435,6 +435,7 @@ fn dispatch_inner(
         "revision.list" => revision_list(state, &request),
         "revision.restore" => revision_restore(state, &request),
         "render.enqueue" => render_enqueue(state, &request),
+        "lut.pick" => lut_pick(state, &request, authorized_selection),
         "job.list" => job_list(state, &request),
         "job.cancel" => job_cancel(state, &request),
         "job.retry" => job_retry(state, &request),
@@ -912,12 +913,16 @@ fn render_enqueue(state: &AppState, request: &NativeRequest) -> Result<Value, Di
         return Ok(response);
     }
     let expected_version = require_expected_version(request)?;
-    if required_string(&request.payload, "preset")? != "1080p_sdr" {
-        return Err(DispatchError::new(
+    let preset = required_string(&request.payload, "preset")?;
+    let output = OutputSpec::preset(&preset).ok_or_else(|| {
+        DispatchError::new(
             "UNSUPPORTED_MEDIA",
-            "only 1080p_sdr is implemented",
-        ));
-    }
+            format!(
+                "unknown render preset '{preset}'; supported: {}",
+                OutputSpec::preset_names().join(", ")
+            ),
+        )
+    })?;
     let revision_id = required_string(&request.payload, "revisionId")?;
     let session = session(state, &project_id)?;
     let receipt = native_receipt_for_request(request, false)?;
@@ -929,12 +934,39 @@ fn render_enqueue(state: &AppState, request: &NativeRequest) -> Result<Value, Di
                 project_id,
                 revision_id,
                 dependency_job_id: None,
+                output: Some(output),
             },
             expected_version,
             &receipt,
             job_dto,
         )
         .map_err(map_jobs_error)
+}
+
+fn lut_pick(
+    _state: &AppState,
+    request: &NativeRequest,
+    authorized_selection: Option<&Path>,
+) -> Result<Value, DispatchError> {
+    let _project_id = required_project_id(request)?;
+    let selected_path = authorized_selection
+        .map(|path| path.to_string_lossy().into_owned())
+        .or(optional_string(&request.payload, "path")?)
+        .ok_or_else(|| DispatchError::new("INVALID_INPUT", "LUT file path is required"))?;
+    let canonical = fs::canonicalize(&selected_path).map_err(|error| {
+        DispatchError::new(
+            "INVALID_INPUT",
+            format!("LUT path is not a readable local file: {error}"),
+        )
+    })?;
+    let info = MediaEngine::validate_lut(&canonical)
+        .map_err(|error| DispatchError::new("UNSUPPORTED_MEDIA", error.to_string()))?;
+    Ok(json!({
+        "path": canonical.to_string_lossy(),
+        "sha256": info.sha256,
+        "size": info.size,
+        "title": info.title,
+    }))
 }
 
 fn job_list(state: &AppState, request: &NativeRequest) -> Result<Value, DispatchError> {
@@ -1340,6 +1372,7 @@ fn build_mutation(
         "replace" => mutation_replace(database, composition, payload),
         "reorder" => mutation_reorder(database, composition, payload),
         "remove" => mutation_remove(database, composition, payload),
+        "setColor" => mutation_set_color(composition, payload),
         _ => Err(CoreError::InvalidInput(format!(
             "unsupported composition action: {action}"
         ))),
@@ -1425,6 +1458,7 @@ fn mutation_add(
             timeline_start,
             timeline_duration,
             sort_order,
+            color: ClipColor::default(),
         },
     });
     Ok(CompositionMutation { operations })
@@ -1742,6 +1776,26 @@ fn mutation_reorder(
     })
 }
 
+fn mutation_set_color(
+    composition: &Composition,
+    payload: &Value,
+) -> cutroom_core::Result<CompositionMutation> {
+    let clip_id = required_string_core(payload, "clipId")?;
+    if !composition.clips.iter().any(|clip| clip.id == clip_id) {
+        return Err(CoreError::InvalidInput(
+            "clip does not belong to the composition".into(),
+        ));
+    }
+    let color: ClipColor = serde_json::from_value(
+        payload.get("color").cloned().unwrap_or(Value::Null),
+    )
+    .map_err(|error| CoreError::InvalidInput(format!("invalid clip color: {error}")))?;
+    color.validate()?;
+    Ok(CompositionMutation {
+        operations: vec![TimelineOperation::SetClipColor { clip_id, color }],
+    })
+}
+
 fn mutation_remove(
     database: &mut Database,
     composition: &Composition,
@@ -1905,6 +1959,7 @@ fn clip_input(
         )?,
         timeline_duration,
         sort_order: clip.sort_order,
+        color: clip.color.clone(),
     })
 }
 
@@ -2002,7 +2057,7 @@ fn track_dto(track: &Track) -> Value {
 }
 
 fn clip_dto(clip: &Clip) -> Value {
-    json!({ "id": clip.id, "trackId": clip.track_id, "assetId": clip.asset_id, "name": clip.name, "inTicks": clip.in_ticks, "outTicks": clip.out_ticks, "timelineStartTicks": clip.timeline_start_ticks, "timelineDurationTicks": clip.timeline_duration_ticks })
+    json!({ "id": clip.id, "trackId": clip.track_id, "assetId": clip.asset_id, "name": clip.name, "inTicks": clip.in_ticks, "outTicks": clip.out_ticks, "timelineStartTicks": clip.timeline_start_ticks, "timelineDurationTicks": clip.timeline_duration_ticks, "color": clip.color })
 }
 
 fn revision_dto(revision: &Revision) -> Value {

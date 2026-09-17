@@ -65,12 +65,7 @@ fn seconds(value: i128) -> RationalTime {
 }
 
 fn range(source: &Path, start: RationalTime, end: RationalTime) -> SourceRange {
-    SourceRange {
-        source: source.to_path_buf(),
-        expected_sha256: sha256(source),
-        start,
-        end,
-    }
+    SourceRange::new(source.to_path_buf(), sha256(source), start, end)
 }
 
 fn request(first: SourceRange, second: SourceRange, destination: PathBuf) -> TwoClipRenderRequest {
@@ -367,12 +362,12 @@ fn disposable_source_integrity_mismatch_is_typed_and_preserves_fixtures() {
     let error = engine()
         .render_1080p_sdr(
             &request(
-                SourceRange {
-                    source: disposable.clone(),
-                    expected_sha256: sha256(&source_a),
-                    start: seconds(0),
-                    end: seconds(1),
-                },
+                SourceRange::new(
+                    disposable.clone(),
+                    sha256(&source_a),
+                    seconds(0),
+                    seconds(1),
+                ),
                 range(&source_b, seconds(0), seconds(1)),
                 destination.clone(),
             ),
@@ -402,12 +397,7 @@ fn corrupt_input_and_pre_cancelled_render_clean_up_without_promotion() {
     let corrupt_error = engine()
         .render_1080p_sdr(
             &request(
-                SourceRange {
-                    source: corrupt.clone(),
-                    expected_sha256: sha256(&corrupt),
-                    start: seconds(0),
-                    end: seconds(1),
-                },
+                SourceRange::new(corrupt.clone(), sha256(&corrupt), seconds(0), seconds(1)),
                 range(&source_b, seconds(0), seconds(1)),
                 corrupt_destination.clone(),
             ),

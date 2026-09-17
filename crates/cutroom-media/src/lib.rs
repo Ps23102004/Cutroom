@@ -11,6 +11,7 @@ pub use cutroom_core::{RationalTime, RationalTimeBase};
 pub use engine::{CancellationToken, MediaEngine};
 pub use error::{MediaError, Result};
 pub use model::{
-    AudioProbe, ColorMetadata, MediaProbe, RenderArtifact, SourceRange, TwoClipRenderRequest,
-    VideoProbe,
+    AudioProbe, ColorGrade, ColorMetadata, InputColorSpace, LutInfo, LutSpec, MediaProbe,
+    OutputColor, OutputSpec, ProRenderRequest, RenderArtifact, SourceRange, TwoClipRenderRequest,
+    VideoCodec, VideoProbe,
 };

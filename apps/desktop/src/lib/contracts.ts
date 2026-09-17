@@ -82,7 +82,62 @@ export interface Clip {
   timelineStartTicks: string;
   timelineDurationTicks: string;
   color?: string;
+  /** Per-clip color grade state, mirrored from the native `clip_dto` `color` field. */
+  colorGrade?: ClipColor;
   isFixture?: boolean;
+}
+
+/**
+ * Per-clip color grading state. Mirrors the native `ClipColor` contract
+ * (camelCase JSON): input color space declaration plus the grade.
+ */
+export type InputColorSpace =
+  | 'auto'
+  | 'rec709'
+  | 'bt2020_sdr'
+  | 's_log3'
+  | 'v_log'
+  | 'c_log3'
+  | 'pq_hdr'
+  | 'hlg_hdr';
+
+export interface LutRef {
+  path: string;
+  expectedSha256: string;
+}
+
+export interface ColorGradeState {
+  exposureEv: number;
+  contrast: number;
+  saturation: number;
+  wbTemp: number;
+  wbTint: number;
+  lut: LutRef | null;
+}
+
+export interface ClipColor {
+  inputColorSpace: InputColorSpace;
+  grade: ColorGradeState;
+}
+
+/** Neutral grade: every adjustment at its identity value. */
+export function neutralColorGrade(): ColorGradeState {
+  return {
+    exposureEv: 0,
+    contrast: 1,
+    saturation: 1,
+    wbTemp: 0,
+    wbTint: 0,
+    lut: null,
+  };
+}
+
+/** Neutral clip color: auto input detection, no grade. */
+export function neutralClipColor(): ClipColor {
+  return {
+    inputColorSpace: 'auto',
+    grade: neutralColorGrade(),
+  };
 }
 
 export interface Composition {
@@ -126,13 +181,70 @@ export interface Job {
   isFixture?: boolean;
 }
 
-export type OutputPreset = '1080p_sdr' | 'vertical_9_16' | 'review_proxy' | 'subtitle_package';
+export type OutputPreset =
+  | '1080p_sdr'
+  | '720p_h264'
+  | '1080p_h264'
+  | '2160p_h265'
+  | '2160p60_h265'
+  | '2160p_hdr10';
 
 export interface RenderRequest {
   projectId: string;
   revisionId: string;
   preset: OutputPreset;
 }
+
+export interface PresetSpec {
+  label: string;
+  video: string;
+  audio: string;
+  color: string;
+}
+
+/**
+ * The six native render presets and their implemented render specifications.
+ * Single source of truth for the Deliver preset picker, spec text, and
+ * fixture-mode job labels.
+ */
+export const OUTPUT_PRESET_SPECS: Record<OutputPreset, PresetSpec> = {
+  '1080p_sdr': {
+    label: '1080p24 H.264 SDR Master',
+    video: 'H.264 (libx264), 1080p24',
+    audio: 'AAC',
+    color: 'Rec.709 SDR',
+  },
+  '720p_h264': {
+    label: '720p30 H.264 SDR',
+    video: 'H.264 (libx264), 720p30',
+    audio: 'AAC',
+    color: 'Rec.709 SDR',
+  },
+  '1080p_h264': {
+    label: '1080p30 H.264 SDR',
+    video: 'H.264 (libx264), 1080p30',
+    audio: 'AAC',
+    color: 'Rec.709 SDR',
+  },
+  '2160p_h265': {
+    label: '4K30 H.265 SDR',
+    video: 'H.265 (libx265), 2160p30',
+    audio: 'AAC',
+    color: 'Rec.709 SDR',
+  },
+  '2160p60_h265': {
+    label: '4K60 H.265 SDR',
+    video: 'H.265 (libx265), 2160p60',
+    audio: 'AAC',
+    color: 'Rec.709 SDR',
+  },
+  '2160p_hdr10': {
+    label: '4K30 H.265 HDR10',
+    video: 'H.265 (libx265), 2160p30',
+    audio: 'AAC',
+    color: 'BT.2020 PQ HDR10',
+  },
+};
 
 export interface PreflightItem {
   id: string;

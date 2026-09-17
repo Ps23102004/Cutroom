@@ -138,6 +138,43 @@ async fn dispatch(
                 "project.open resolves only durable registered project IDs",
             ));
         }
+        "lut.pick" => {
+            if request.payload.get("path").is_some() {
+                return Ok(rejected(
+                    "LUT files must be selected through the native file picker",
+                ));
+            }
+            if request
+                .payload
+                .get("openFileDialog")
+                .and_then(Value::as_bool)
+                != Some(true)
+            {
+                return Ok(rejected("lut.pick requires openFileDialog: true"));
+            }
+            let handle = app.clone();
+            let selection = tauri::async_runtime::spawn_blocking(move || {
+                handle
+                    .dialog()
+                    .file()
+                    .set_title("Choose a .cube LUT")
+                    .add_filter("LUT", &["cube"])
+                    .blocking_pick_file()
+                    .and_then(|file| file.into_path().ok())
+            })
+            .await;
+            match selection {
+                Ok(Some(path)) => {
+                    return Ok(dispatch_with_authorized_selection(
+                        &state,
+                        request,
+                        Some(path),
+                    ));
+                }
+                Ok(None) => return Ok(rejected("LUT selection was cancelled")),
+                Err(_) => return Ok(rejected("native LUT picker did not complete")),
+            }
+        }
         _ => {}
     }
     Ok(core_dispatch(&state, request))

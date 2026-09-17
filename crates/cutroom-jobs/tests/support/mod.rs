@@ -6,7 +6,7 @@ use std::{
 };
 
 use cutroom_core::{
-    Asset, AssetInput, ClipInput, CompositionMutation, Database, Project, ProjectInput,
+    Asset, AssetInput, ClipColor, ClipInput, CompositionMutation, Database, Project, ProjectInput,
     RationalTime, RationalTimeBase, Revision, TimelineOperation, TrackInput,
 };
 use cutroom_media::{CancellationToken, MediaEngine};
@@ -177,6 +177,7 @@ pub fn setup_fixture() -> JobFixture {
         timeline_start: time(start, 1, 48_000),
         timeline_duration: time(96_000, 1, 48_000),
         sort_order: if start == 0 { 0 } else { 1 },
+        color: ClipColor::default(),
     };
     database
         .compositions()

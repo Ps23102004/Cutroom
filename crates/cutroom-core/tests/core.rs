@@ -62,6 +62,7 @@ fn clip(track_id: &str, asset_id: &str, out: RationalTime) -> ClipInput {
         timeline_start: time(0, 1, 48_000),
         timeline_duration: time(2_000, 1, 48_000),
         sort_order: 0,
+        color: ClipColor::default(),
     }
 }
 
@@ -92,7 +93,7 @@ fn migrations_are_ordered_and_include_jobs_baseline() {
     let database = Database::open(database_path(&dir)).unwrap();
     assert_eq!(
         database.applied_migrations().unwrap(),
-        vec![1, 2, LATEST_MIGRATION_VERSION]
+        vec![1, 2, 3, LATEST_MIGRATION_VERSION]
     );
 }
 

@@ -12,9 +12,11 @@ use std::{
 };
 
 use cutroom_core::{
-    Database, JobEnqueue, JobRecord, NativeReceipt, NativeReceiptLookup, RenderJobSpec,
+    Database, JobEnqueue, JobRecord, NativeReceipt, NativeReceiptLookup, OutputSpec, RenderJobSpec,
 };
-use cutroom_media::{CancellationToken, MediaEngine, SourceRange, TwoClipRenderRequest};
+use cutroom_media::{
+    CancellationToken, MediaEngine, ProRenderRequest, SourceRange, TwoClipRenderRequest,
+};
 use serde_json::Value;
 
 use crate::{JobsError, Result};
@@ -270,9 +272,23 @@ impl JobEngine {
             .with_database(|database| database.jobs().render_spec(&job.id))
             .and_then(|spec| render_request(&job, spec, scratch_dir.join("artifact.mp4")));
         let render_result = render.and_then(|request| {
-            self.media
-                .render_1080p_sdr(&request, &cancellation)
-                .map_err(JobsError::from)
+            // The legacy 1080p_sdr preset keeps the original B0 pipeline and
+            // its strict contracts; every newer preset uses the pro pipeline.
+            if request.output == OutputSpec::sd_1080p24_h264() {
+                self.media
+                    .render_1080p_sdr(
+                        &TwoClipRenderRequest {
+                            clips: request.clips,
+                            destination: request.destination,
+                        },
+                        &cancellation,
+                    )
+                    .map_err(JobsError::from)
+            } else {
+                self.media
+                    .render_pro(&request, &cancellation)
+                    .map_err(JobsError::from)
+            }
         });
         heartbeat_stop.store(true, Ordering::Release);
         heartbeat.join().map_err(|_| JobsError::ThreadFailed)?;
@@ -429,7 +445,7 @@ fn render_request(
     job: &JobRecord,
     spec: RenderJobSpec,
     destination: PathBuf,
-) -> Result<TwoClipRenderRequest> {
+) -> Result<ProRenderRequest> {
     if spec.project_id != job.project_id
         || job.revision_id.as_deref() != Some(spec.revision_id.as_str())
     {
@@ -437,13 +453,19 @@ fn render_request(
             "job render specification does not match its durable project/revision binding".into(),
         )));
     }
-    Ok(TwoClipRenderRequest {
-        clips: spec.clips.map(|clip| SourceRange {
-            source: PathBuf::from(clip.source),
-            expected_sha256: clip.expected_sha256,
-            start: clip.start,
-            end: clip.end,
+    Ok(ProRenderRequest {
+        clips: spec.clips.map(|clip| {
+            let mut range = SourceRange::new(
+                PathBuf::from(clip.source),
+                clip.expected_sha256,
+                clip.start,
+                clip.end,
+            );
+            range.color = clip.color.grade;
+            range.input_color_space = clip.color.input_color_space;
+            range
         }),
+        output: spec.output,
         destination,
     })
 }

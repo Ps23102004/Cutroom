@@ -22,3 +22,4 @@ __pycache__/
 # checked-in schemas for primary targets are tracked).
 apps/desktop/src-tauri/gen/schemas/linux-schema.json
 apps/desktop/src-tauri/gen/schemas/windows-schema.json
+dist-qa/

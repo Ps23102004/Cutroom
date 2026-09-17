@@ -67,7 +67,7 @@ fn genuine_v1_jobs_and_only_marker_one_upgrade_all_stages_to_latest() {
     drop(connection);
 
     let mut reopened = Database::open(&path).unwrap();
-    assert_eq!(reopened.applied_migrations().unwrap(), vec![1, 2, 3]);
+    assert_eq!(reopened.applied_migrations().unwrap(), vec![1, 2, 3, 4]);
     assert_eq!(
         reopened.projects().get(&project.id).unwrap().name,
         "Genuine v1"
@@ -79,7 +79,10 @@ fn genuine_v1_jobs_and_only_marker_one_upgrade_all_stages_to_latest() {
     drop(reopened);
 
     let mut reopened_again = Database::open(&path).unwrap();
-    assert_eq!(reopened_again.applied_migrations().unwrap(), vec![1, 2, 3]);
+    assert_eq!(
+        reopened_again.applied_migrations().unwrap(),
+        vec![1, 2, 3, 4]
+    );
     assert_eq!(
         reopened_again.projects().get(&project.id).unwrap().name,
         "Genuine v1"
@@ -114,7 +117,7 @@ fn unproven_v1_marker_with_v3_schema_is_rejected_without_mutation() {
     drop(connection);
 
     let error = match Database::open(&path) {
-        Ok(_) => panic!("unproven [1,3]/user_version=1 metadata unexpectedly opened"),
+        Ok(_) => panic!("unproven [1,3,4]/user_version=1 metadata unexpectedly opened"),
         Err(error) => error,
     };
     assert!(matches!(
@@ -133,7 +136,7 @@ fn unproven_v1_marker_with_v3_schema_is_rejected_without_mutation() {
             .collect::<std::result::Result<Vec<_>, _>>()
             .unwrap()
     };
-    assert_eq!(migrations, vec![1, 3]);
+    assert_eq!(migrations, vec![1, 3, 4]);
     let user_version: i64 = connection
         .query_row("PRAGMA user_version", [], |row| row.get(0))
         .unwrap();

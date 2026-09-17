@@ -126,6 +126,34 @@ describe('DeliveryTruth: Deliver Route Truth & Gating', () => {
     // Honest empty state explanation
     expect(screen.getByText(/No delivered master packages yet/i)).toBeDefined();
   });
+
+  it('offers all six implemented render presets and updates the spec text per preset', () => {
+    render(
+      <AppProvider>
+        <FixtureDeliverWrapper />
+      </AppProvider>
+    );
+
+    const presetSelect = screen.getByLabelText('Select Target Output Preset') as HTMLSelectElement;
+    const optionValues = Array.from(presetSelect.options).map((option) => option.value);
+    expect(optionValues).toEqual([
+      '1080p_sdr',
+      '720p_h264',
+      '1080p_h264',
+      '2160p_h265',
+      '2160p60_h265',
+      '2160p_hdr10',
+    ]);
+
+    // Default preset keeps the legacy 1080p SDR spec text.
+    expect(screen.getByText(/H\.264 \(libx264\), 1080p24/i)).toBeDefined();
+
+    // Switching to the HDR10 preset updates the spec block honestly.
+    fireEvent.change(presetSelect, { target: { value: '2160p_hdr10' } });
+    expect(screen.getByText(/H\.265 \(libx265\), 2160p30/i)).toBeDefined();
+    expect(screen.getByText(/BT\.2020 PQ HDR10/i)).toBeDefined();
+    expect(screen.queryByText(/H\.264 \(libx264\), 1080p24/i)).toBeNull();
+  });
 });
 
 describe('DeliveryTruth: HelpDrawer Truth & Behavior', () => {

@@ -27,8 +27,9 @@ pub fn fixture_b() -> PathBuf {
 }
 
 fn test_engine() -> MediaEngine {
-    MediaEngine::discover()
-        .expect("ffmpeg/ffprobe must resolve for media tests (CUTROOM_FFMPEG / CUTROOM_FFPROBE / PATH)")
+    MediaEngine::discover().expect(
+        "ffmpeg/ffprobe must resolve for media tests (CUTROOM_FFMPEG / CUTROOM_FFPROBE / PATH)",
+    )
 }
 
 /// Absolute ffmpeg path, resolved exactly the way the library resolves it.

@@ -48,6 +48,7 @@ fn enqueue(engine: &JobEngine, project_id: &str, revision_id: &str) -> cutroom_c
             project_id: project_id.into(),
             revision_id: revision_id.into(),
             dependency_job_id: None,
+            output: None,
         })
         .unwrap()
 }
@@ -103,6 +104,7 @@ fn process_termination_recovery_retries_once_without_duplicate_or_false_success(
             project_id: project_id.clone(),
             revision_id: revision_id.clone(),
             dependency_job_id: None,
+            output: None,
         })
         .unwrap();
     let directory = fixture._directory;

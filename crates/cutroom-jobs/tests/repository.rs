@@ -25,6 +25,7 @@ fn enqueue(
             project_id: fixture.project.id.clone(),
             revision_id: fixture.revision.id.clone(),
             dependency_job_id,
+            output: None,
         })
         .unwrap()
 }
@@ -78,6 +79,7 @@ fn duplicate_operation_with_different_dependency_is_an_idempotency_conflict() {
             project_id: fixture.project.id.clone(),
             revision_id: fixture.revision.id.clone(),
             dependency_job_id: Some(upstream.id),
+            output: None,
         })
         .unwrap_err();
     assert!(matches!(error, CoreError::IdempotencyConflict { .. }));
@@ -335,6 +337,7 @@ fn render_enqueue_rejects_non_primary_or_muted_revision_tracks() {
                 project_id,
                 revision_id: fixture.revision.id.clone(),
                 dependency_job_id: None,
+                output: None,
             })
             .unwrap_err();
         assert!(
@@ -366,6 +369,7 @@ fn concurrent_duplicate_enqueues_return_one_durable_job() {
                     project_id,
                     revision_id,
                     dependency_job_id: None,
+                    output: None,
                 })
                 .map(|job| job.id)
                 .map_err(|error| error.to_string())
