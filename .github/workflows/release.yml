@@ -63,7 +63,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: apps/desktop
-          tauriScript: cargo tauri
           args: ${{ matrix.tauri-args }}
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0-dev' }}
           releaseName: "Cutroom ${{ github.ref_type == 'tag' && github.ref_name || 'v0.1.0-dev' }}"
