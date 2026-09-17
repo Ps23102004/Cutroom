@@ -9,7 +9,19 @@
 
 ## Download
 
-Prebuilt installers are not published yet. The supported way to run Cutroom today is a one-time build from source — it takes about 10 minutes on a modern machine.
+Prebuilt installers for **Cutroom v0.1.0** are on the [releases page](https://github.com/Ps23102004/Cutroom/releases/tag/v0.1.0):
+
+| Platform | Installer |
+|---|---|
+| macOS (Apple Silicon) | `Cutroom_0.1.0_aarch64.dmg` |
+| macOS (Intel) | `Cutroom_0.1.0_x64.dmg` |
+| Windows | `Cutroom_0.1.0_x64-setup.exe` (or the `.msi`) |
+| Linux | `Cutroom_0.1.0_amd64.AppImage` (or the `.deb` / `.rpm`) |
+
+Notes:
+- The apps are **not code-signed**, so macOS will show an “unidentified developer” warning (right-click → Open to run it) and Windows SmartScreen may ask for confirmation.
+- **FFmpeg must be installed separately** and available on `PATH` (see prerequisites below) — rendering shells out to it.
+- Prefer building from source (below) if you want the latest `main` instead of the release snapshot.
 
 ### Prerequisites
 
@@ -81,7 +93,6 @@ cargo tauri build
 
 ## Current limitations (honest)
 
-- **No prebuilt downloads yet** — build from source (see above).
 - HDR10 output supports **PQ only**; HLG sources are tone-mapped to SDR.
 - Only **S-Log3** has a built-in de-log LUT; V-Log/C-Log3 need the manufacturer's `.cube`.
 - Mixed audio/no-audio timelines are rejected rather than silence-filled (for now).
