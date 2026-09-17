@@ -60,7 +60,7 @@ jobs:
         run: pnpm --filter @cutroom/desktop build
 
       - name: Build and draft release
-        uses: tauri-apps/tauri-action@v2
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
