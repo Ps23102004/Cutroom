@@ -11,17 +11,26 @@
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: data: blob:; media-src 'self' asset: blob:; connect-src 'self' ipc: http://ipc.localhost"
     },
-    "windows": [{
-      "label": "main",
-      "title": "Cutroom",
-      "width": 1440,
-      "height": 900,
-      "minWidth": 1440,
-      "minHeight": 900,
-      "backgroundColor": "#19161F"
-    }]
+    "windows": [
+      {
+        "label": "main",
+        "title": "Cutroom",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1440,
+        "minHeight": 900,
+        "backgroundColor": "#19161F"
+      }
+    ]
   },
   "bundle": {
-    "active": false
+    "active": true,
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
   }
 }
