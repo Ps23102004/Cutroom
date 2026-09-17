@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { FIXTURES_ENABLED } from '../lib/qaFlags';
 import { Button, Card, Badge, Modal, Input, Select } from '@cutroom/ui';
 import { PlusIcon, FolderIcon, UploadIcon, PlayIcon, AlertCircleIcon } from '@cutroom/ui';
 import { Cutline } from '../components/cutline/Cutline';
@@ -205,7 +206,7 @@ export const HomeRoute: React.FC = () => {
               <Button variant="primary" leftIcon={<PlusIcon size={16} />} onClick={() => setIsNewProjectModalOpen(true)}>
                 Create First Project
               </Button>
-              {import.meta.env.DEV && !isFixtureMode && (
+              {FIXTURES_ENABLED && !isFixtureMode && (
                 <Button variant="outline" onClick={enableFixtureMode}>
                   Explore with Sample Fixtures [FIXTURE]
                 </Button>

@@ -84,6 +84,7 @@ fn source_clip(track_id: &str, asset_id: &str, timeline_duration: i128) -> ClipI
         timeline_start: time(0, 1, 48_000),
         timeline_duration: time(timeline_duration, 1, 48_000),
         sort_order: 0,
+        color: ClipColor::default(),
     }
 }
 
@@ -387,7 +388,7 @@ fn fresh_open_sets_supported_schema_metadata_and_reopens() {
     let database = Database::open(&path).unwrap();
     assert_eq!(
         database.applied_migrations().unwrap(),
-        vec![1, 2, LATEST_MIGRATION_VERSION]
+        vec![1, 2, 3, LATEST_MIGRATION_VERSION]
     );
     drop(database);
 
@@ -407,7 +408,7 @@ fn fresh_open_sets_supported_schema_metadata_and_reopens() {
     let reopened = Database::open(&path).unwrap();
     assert_eq!(
         reopened.applied_migrations().unwrap(),
-        vec![1, 2, LATEST_MIGRATION_VERSION]
+        vec![1, 2, 3, LATEST_MIGRATION_VERSION]
     );
 }
 
@@ -460,7 +461,7 @@ fn legacy_v1_jobs_upgrade_in_place_and_preserve_existing_project_data() {
     let mut reopened = Database::open(&path).unwrap();
     assert_eq!(
         reopened.applied_migrations().unwrap(),
-        vec![1, 2, LATEST_MIGRATION_VERSION]
+        vec![1, 2, 3, LATEST_MIGRATION_VERSION]
     );
     assert_eq!(
         reopened.projects().get(&project.id).unwrap().name,
@@ -478,7 +479,7 @@ fn legacy_v1_jobs_upgrade_in_place_and_preserve_existing_project_data() {
     let mut reopened_again = Database::open(&path).unwrap();
     assert_eq!(
         reopened_again.applied_migrations().unwrap(),
-        vec![1, 2, LATEST_MIGRATION_VERSION]
+        vec![1, 2, 3, LATEST_MIGRATION_VERSION]
     );
     assert_eq!(
         reopened_again.projects().get(&project.id).unwrap().name,
@@ -697,6 +698,7 @@ fn exact_source_boundary_is_accepted_and_one_tick_over_is_rejected() {
         timeline_start: time(0, 1, 48_000),
         timeline_duration: time(out, 1, 48_000),
         sort_order: 0,
+        color: ClipColor::default(),
     };
 
     database
@@ -771,6 +773,7 @@ fn derived_duration_and_reorder_preserve_each_clip_source_identity() {
                 timeline_start: time(start, 1, 48_000),
                 timeline_duration: time(output - input, 1, 48_000),
                 sort_order,
+                color: ClipColor::default(),
             }
         };
     database

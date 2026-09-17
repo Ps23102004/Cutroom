@@ -1,6 +1,7 @@
 import React from 'react';
 import { useApp } from '../../context/AppContext';
 import { PRIMARY_ROUTES } from '../../routes/manifest';
+import { FIXTURES_ENABLED } from '../../lib/qaFlags';
 import { Breadcrumb, Button, Badge } from '@cutroom/ui';
 
 export const TopBar: React.FC = () => {
@@ -134,7 +135,7 @@ export const TopBar: React.FC = () => {
         )}
 
         {/* Fixture Mode Opt-In Toggle */}
-        {import.meta.env.DEV && (
+        {FIXTURES_ENABLED && (
           isFixtureMode ? (
             <Button size="sm" variant="outline" onClick={resetToEmpty}>
               Exit Fixture Mode

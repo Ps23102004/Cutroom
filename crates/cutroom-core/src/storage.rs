@@ -15,13 +15,14 @@ use sha2::{Digest, Sha256};
 use uuid::Uuid;
 
 use crate::{
-    Asset, AssetInput, Clip, ClipInput, Composition, CompositionMutation, CompositionSnapshot,
-    CoreError, JobClaim, JobEnqueue, JobRecord, JobStatus, MutationResult, Project, ProjectInput,
-    RationalTime, RationalTimeBase, RenderJobSource, RenderJobSpec, Result, Revision,
-    TimelineOperation, Track, TrackInput, checked_tick_sum, parse_ticks,
+    Asset, AssetInput, Clip, ClipColor, ClipInput, Composition, CompositionMutation,
+    CompositionSnapshot, CoreError, JobClaim, JobEnqueue, JobRecord, JobStatus, MutationResult,
+    OutputSpec, Project, ProjectInput, RationalTime, RationalTimeBase, RenderJobSource,
+    RenderJobSpec, Result, Revision, TimelineOperation, Track, TrackInput, checked_tick_sum,
+    parse_ticks,
 };
 
-pub const LATEST_MIGRATION_VERSION: i64 = 3;
+pub const LATEST_MIGRATION_VERSION: i64 = 4;
 
 type ProjectRow = (
     String,
@@ -152,7 +153,8 @@ CREATE TABLE IF NOT EXISTS clips (
     out_ticks TEXT NOT NULL,
     timeline_start_ticks TEXT NOT NULL,
     timeline_duration_ticks TEXT NOT NULL,
-    sort_order INTEGER NOT NULL DEFAULT 0
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    color_json TEXT NOT NULL DEFAULT '{}'
 );
 CREATE INDEX IF NOT EXISTS idx_clips_track ON clips(track_id, sort_order);
 CREATE TABLE IF NOT EXISTS revisions (
@@ -414,6 +416,7 @@ impl Database {
             record_migration(&transaction, 1)?;
             apply_jobs_v2(&transaction)?;
             apply_native_receipts_v3(&transaction)?;
+            apply_clip_color_v4(&transaction)?;
             transaction.commit()?;
             return Ok(());
         }
@@ -429,7 +432,10 @@ impl Database {
             });
         }
         if core_schema_table_count(&transaction)? != 8
-            || !matches!(versions.as_slice(), [1] | [1, 2] | [1, 3] | [1, 2, 3])
+            || !matches!(
+                versions.as_slice(),
+                [1] | [1, 2] | [1, 3] | [1, 2, 3] | [1, 3, 4] | [1, 2, 3, 4]
+            )
         {
             return Err(CoreError::InvalidInput(
                 "inconsistent schema migration metadata for the B0 schema".into(),
@@ -445,6 +451,7 @@ impl Database {
             {
                 apply_jobs_v2(&transaction)?;
                 apply_native_receipts_v3(&transaction)?;
+                apply_clip_color_v4(&transaction)?;
             }
             [1, 2]
                 if user_version == 2
@@ -452,15 +459,25 @@ impl Database {
                     && !table_exists(&transaction, "native_operation_receipts")? =>
             {
                 apply_native_receipts_v3(&transaction)?;
+                apply_clip_color_v4(&transaction)?;
+            }
+            // Databases that stopped at v3 gain the clip color column.
+            [1, 3] | [1, 2, 3]
+                if user_version == 3
+                    && has_v2_jobs_schema(&transaction)?
+                    && has_native_receipts_schema(&transaction)? =>
+            {
+                apply_clip_color_v4(&transaction)?;
             }
             // The uncommitted pre-release build could create this non-canonical
             // marker history. It is read-compatible only when the installed v2
             // jobs and v3 receipt schemas both validate. It is never repaired by
             // rewriting metadata or user_version.
-            [1, 3] | [1, 2, 3]
+            [1, 3, 4] | [1, 2, 3, 4]
                 if user_version == LATEST_MIGRATION_VERSION
                     && has_v2_jobs_schema(&transaction)?
-                    && has_native_receipts_schema(&transaction)? => {}
+                    && has_native_receipts_schema(&transaction)?
+                    && has_clip_color_column(&transaction)? => {}
             _ => {
                 return Err(CoreError::InvalidInput(format!(
                     "SQLite user_version {user_version} conflicts with migration metadata"
@@ -843,6 +860,28 @@ fn apply_jobs_v2(transaction: &rusqlite::Transaction<'_>) -> Result<()> {
 fn apply_native_receipts_v3(transaction: &rusqlite::Transaction<'_>) -> Result<()> {
     transaction.execute_batch(NATIVE_RECEIPTS_SCHEMA_V3)?;
     record_migration(transaction, 3)
+}
+
+/// v4: per-clip color state for the pro render pipeline. Idempotent: fresh
+/// databases already carry the column from INITIAL_SCHEMA, so the ALTER only
+/// runs when upgrading an existing v3 database.
+fn apply_clip_color_v4(transaction: &rusqlite::Transaction<'_>) -> Result<()> {
+    if !has_clip_color_column(transaction)? {
+        transaction
+            .execute_batch("ALTER TABLE clips ADD COLUMN color_json TEXT NOT NULL DEFAULT '{}';")?;
+    }
+    record_migration(transaction, 4)
+}
+
+fn has_clip_color_column(transaction: &rusqlite::Transaction<'_>) -> Result<bool> {
+    let mut statement = transaction.prepare("PRAGMA table_info(clips)")?;
+    let columns = statement.query_map([], |row| row.get::<_, String>(1))?;
+    for column in columns {
+        if column? == "color_json" {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn canonical_database_path(path: &Path) -> Result<PathBuf> {
@@ -1513,6 +1552,9 @@ impl CompositionRepository<'_> {
                 TimelineOperation::RemoveClip { clip_id } => {
                     remove_clip(&transaction, composition_id, clip_id)?
                 }
+                TimelineOperation::SetClipColor { clip_id, color } => {
+                    set_clip_color(&transaction, composition_id, clip_id, color)?
+                }
             }
         }
         let duration_ticks = recompute_duration(&transaction, composition_id)?;
@@ -1634,6 +1676,9 @@ impl CompositionRepository<'_> {
                     )?,
                     TimelineOperation::RemoveClip { clip_id } => {
                         remove_clip(&transaction, composition_id, clip_id)?
+                    }
+                    TimelineOperation::SetClipColor { clip_id, color } => {
+                        set_clip_color(&transaction, composition_id, clip_id, color)?
                     }
                 }
             }
@@ -1950,7 +1995,12 @@ impl JobRepository<'_> {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)?;
         let revision = read_revision(&transaction, &input.project_id, &input.revision_id)?;
-        let spec = derive_render_spec(&transaction, &input.project_id, &input.revision_id)?;
+        let spec = derive_render_spec(
+            &transaction,
+            &input.project_id,
+            &input.revision_id,
+            input.output.clone(),
+        )?;
         let input_json = serde_json::to_string(&spec)?;
         let fingerprint = serde_json::to_vec(&JobFingerprint {
             project_id: &input.project_id,
@@ -2033,7 +2083,12 @@ impl JobRepository<'_> {
             });
         }
         let revision = read_revision(&transaction, &input.project_id, &input.revision_id)?;
-        let spec = derive_render_spec(&transaction, &input.project_id, &input.revision_id)?;
+        let spec = derive_render_spec(
+            &transaction,
+            &input.project_id,
+            &input.revision_id,
+            input.output.clone(),
+        )?;
         let input_json = serde_json::to_string(&spec)?;
         let fingerprint = serde_json::to_vec(&JobFingerprint {
             project_id: &input.project_id,
@@ -2479,6 +2534,7 @@ fn derive_render_spec(
     connection: &Connection,
     project_id: &str,
     revision_id: &str,
+    output: Option<OutputSpec>,
 ) -> Result<RenderJobSpec> {
     let revision = read_revision(connection, project_id, revision_id)?;
     let snapshot = revision.composition_snapshot;
@@ -2528,6 +2584,7 @@ fn derive_render_spec(
             expected_sha256,
             start,
             end,
+            color: clip.color.clone(),
         });
     }
     let clips: [RenderJobSource; 2] = sources
@@ -2537,6 +2594,7 @@ fn derive_render_spec(
         project_id: project_id.into(),
         revision_id: revision_id.into(),
         clips,
+        output: output.unwrap_or_else(OutputSpec::sd_1080p24_h264),
     })
 }
 
@@ -2788,8 +2846,9 @@ fn load_composition(
         })
     })?;
     let tracks = track_rows.collect::<std::result::Result<Vec<_>, _>>()?;
-    let mut clip_statement = connection.prepare("SELECT c.id, c.track_id, c.asset_id, c.name, c.in_ticks, c.out_ticks, c.timeline_start_ticks, c.timeline_duration_ticks, c.sort_order FROM clips c JOIN tracks t ON t.id = c.track_id WHERE t.composition_id = ?1 ORDER BY t.sort_order, c.sort_order, c.id")?;
+    let mut clip_statement = connection.prepare("SELECT c.id, c.track_id, c.asset_id, c.name, c.in_ticks, c.out_ticks, c.timeline_start_ticks, c.timeline_duration_ticks, c.sort_order, c.color_json FROM clips c JOIN tracks t ON t.id = c.track_id WHERE t.composition_id = ?1 ORDER BY t.sort_order, c.sort_order, c.id")?;
     let clip_rows = clip_statement.query_map(params![&id], |row| {
+        let color_json: String = row.get(9)?;
         Ok(Clip {
             id: row.get(0)?,
             track_id: row.get(1)?,
@@ -2800,6 +2859,13 @@ fn load_composition(
             timeline_start_ticks: row.get(6)?,
             timeline_duration_ticks: row.get(7)?,
             sort_order: row.get(8)?,
+            color: parse_clip_color(&color_json).map_err(|error| {
+                rusqlite::Error::FromSqlConversionFailure(
+                    9,
+                    rusqlite::types::Type::Text,
+                    Box::new(error),
+                )
+            })?,
         })
     })?;
     let clips = clip_rows.collect::<std::result::Result<Vec<_>, _>>()?;
@@ -2915,6 +2981,7 @@ fn normalized_clip(
             reason: "timeline duration must exactly equal the source range duration in the composition time base".into(),
         });
     }
+    input.color.validate()?;
     Ok(Clip {
         id: input.id.clone().unwrap_or_else(new_id),
         track_id: input.track_id.clone(),
@@ -2925,6 +2992,7 @@ fn normalized_clip(
         timeline_start_ticks,
         timeline_duration_ticks,
         sort_order: input.sort_order,
+        color: input.color.clone(),
     })
 }
 
@@ -2977,8 +3045,8 @@ fn update_clip(
     }
     let clip = normalized_clip(connection, project_id, composition_id, time_base, input)?;
     let changed = connection.execute(
-        "UPDATE clips SET track_id = ?1, asset_id = ?2, name = ?3, in_ticks = ?4, out_ticks = ?5, timeline_start_ticks = ?6, timeline_duration_ticks = ?7, sort_order = ?8 WHERE id = ?9 AND id IN (SELECT c.id FROM clips c JOIN tracks t ON t.id = c.track_id WHERE t.composition_id = ?10)",
-        params![clip.track_id, clip.asset_id, clip.name, clip.in_ticks, clip.out_ticks, clip.timeline_start_ticks, clip.timeline_duration_ticks, clip.sort_order, clip.id, composition_id],
+        "UPDATE clips SET track_id = ?1, asset_id = ?2, name = ?3, in_ticks = ?4, out_ticks = ?5, timeline_start_ticks = ?6, timeline_duration_ticks = ?7, sort_order = ?8, color_json = ?9 WHERE id = ?10 AND id IN (SELECT c.id FROM clips c JOIN tracks t ON t.id = c.track_id WHERE t.composition_id = ?11)",
+        params![clip.track_id, clip.asset_id, clip.name, clip.in_ticks, clip.out_ticks, clip.timeline_start_ticks, clip.timeline_duration_ticks, clip.sort_order, clip_color_json(&clip), clip.id, composition_id],
     )?;
     if changed != 1 {
         return Err(CoreError::InvalidInput(
@@ -2993,6 +3061,29 @@ fn remove_clip(connection: &Connection, composition_id: &str, clip_id: &str) -> 
     let changed = connection.execute(
         "DELETE FROM clips WHERE id = ?1 AND track_id IN (SELECT id FROM tracks WHERE composition_id = ?2)",
         params![clip_id, composition_id],
+    )?;
+    if changed != 1 {
+        return Err(CoreError::InvalidInput(
+            "clip does not belong to the composition".into(),
+        ));
+    }
+    Ok(())
+}
+
+/// Targeted per-clip color update. Validates the grade eagerly so the UI gets
+/// immediate feedback; the render pipeline re-validates before encoding.
+fn set_clip_color(
+    connection: &Connection,
+    composition_id: &str,
+    clip_id: &str,
+    color: &ClipColor,
+) -> Result<()> {
+    require_text(clip_id, "clip_id")?;
+    color.validate()?;
+    let color_json = serde_json::to_string(color).expect("ClipColor serializes to JSON");
+    let changed = connection.execute(
+        "UPDATE clips SET color_json = ?1 WHERE id = ?2 AND track_id IN (SELECT id FROM tracks WHERE composition_id = ?3)",
+        params![color_json, clip_id, composition_id],
     )?;
     if changed != 1 {
         return Err(CoreError::InvalidInput(
@@ -3189,10 +3280,26 @@ fn insert_snapshot_track(connection: &Connection, track: &Track) -> Result<()> {
 
 fn insert_snapshot_clip(connection: &Connection, clip: &Clip) -> Result<()> {
     connection.execute(
-        "INSERT INTO clips (id, track_id, asset_id, name, in_ticks, out_ticks, timeline_start_ticks, timeline_duration_ticks, sort_order) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-        params![clip.id, clip.track_id, clip.asset_id, clip.name, clip.in_ticks, clip.out_ticks, clip.timeline_start_ticks, clip.timeline_duration_ticks, clip.sort_order],
+        "INSERT INTO clips (id, track_id, asset_id, name, in_ticks, out_ticks, timeline_start_ticks, timeline_duration_ticks, sort_order, color_json) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![clip.id, clip.track_id, clip.asset_id, clip.name, clip.in_ticks, clip.out_ticks, clip.timeline_start_ticks, clip.timeline_duration_ticks, clip.sort_order, clip_color_json(clip)],
     )?;
     Ok(())
+}
+
+/// Serializes a clip's color state for the `color_json` column. Serialization
+/// of an in-memory struct cannot fail; a failure is a programming error.
+fn clip_color_json(clip: &Clip) -> String {
+    serde_json::to_string(&clip.color).expect("ClipColor serializes to JSON")
+}
+
+/// Parses a `color_json` column value. Empty or missing JSON means neutral;
+/// corrupt JSON is a hard error, never a silent reset.
+fn parse_clip_color(json: &str) -> Result<ClipColor> {
+    if json.trim().is_empty() {
+        return Ok(ClipColor::default());
+    }
+    serde_json::from_str(json)
+        .map_err(|error| CoreError::InvalidInput(format!("clip color_json is corrupt: {error}")))
 }
 
 #[cfg(test)]

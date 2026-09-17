@@ -2,20 +2,55 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{RationalTime, RationalTimeBase};
+pub use cutroom_core::{ColorGrade, InputColorSpace, LutSpec, OutputColor, OutputSpec, VideoCodec};
+use cutroom_core::{RationalTime, RationalTimeBase};
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct SourceRange {
     pub source: PathBuf,
     pub expected_sha256: String,
     pub start: RationalTime,
     pub end: RationalTime,
+    /// Per-clip color grade. Defaults to neutral; old payloads still parse.
+    #[serde(default)]
+    pub color: ColorGrade,
+    /// Declared input color space. Defaults to `Auto`.
+    #[serde(default)]
+    pub input_color_space: InputColorSpace,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+impl SourceRange {
+    /// A range with the neutral color grade and automatic input color-space
+    /// detection.
+    pub fn new(
+        source: PathBuf,
+        expected_sha256: String,
+        start: RationalTime,
+        end: RationalTime,
+    ) -> Self {
+        Self {
+            source,
+            expected_sha256,
+            start,
+            end,
+            color: ColorGrade::default(),
+            input_color_space: InputColorSpace::Auto,
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct TwoClipRenderRequest {
     /// The render order is exactly this fixed two-item array order.
     pub clips: [SourceRange; 2],
+    pub destination: PathBuf,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ProRenderRequest {
+    /// The render order is exactly this fixed two-item array order.
+    pub clips: [SourceRange; 2],
+    pub output: OutputSpec,
     pub destination: PathBuf,
 }
 
@@ -62,4 +97,15 @@ pub struct RenderArtifact {
     pub sha256: String,
     pub config_digest: String,
     pub probe: MediaProbe,
+}
+
+/// Validated description of a user-supplied `.cube` LUT.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LutInfo {
+    /// The `LUT_3D_SIZE` dimension (N for an NxNxN lattice).
+    pub size: u32,
+    /// The optional `TITLE` line, if present.
+    pub title: Option<String>,
+    /// Lowercase hex SHA-256 of the exact validated bytes.
+    pub sha256: String,
 }

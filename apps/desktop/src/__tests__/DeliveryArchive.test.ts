@@ -64,6 +64,23 @@ describe('Delivery & Archive Engine', () => {
     }
   });
 
+  it('accepts the 4K HDR10 preset in the delivery manifest', () => {
+    const res = validateAndCreateDeliveryManifest({
+      project,
+      brief,
+      revision,
+      renderJobId: 'job-render-100',
+      artifactPath: '/exports/master_2160p_hdr10.mp4',
+      artifactSizeBytes: 85_000_000,
+      artifactSha256: '90cf2510d7c952b9baf6fa71cf7b9297d44395534feeec549f053a51e2708549',
+      artifactDurationSeconds: 60,
+      preset: '2160p_hdr10' as OutputPreset,
+    });
+
+    expect(res.valid).toBe(true);
+    expect(res.manifest).toBeDefined();
+  });
+
   it('rejects delivery when rendered artifact is missing or empty', () => {
     const res = validateAndCreateDeliveryManifest({
       project,

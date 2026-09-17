@@ -252,6 +252,11 @@ describe('End-to-End Product UI Workflow (Phase C)', () => {
     });
 
     const enqueueBtn = screen.getByRole('button', { name: /Enqueue Render Master/i });
+    // Switch to the 4K HDR10 preset to prove the selected preset reaches native.
+    const presetSelect = screen.getByLabelText('Select Target Output Preset');
+    await act(async () => {
+      fireEvent.change(presetSelect, { target: { value: '2160p_hdr10' } });
+    });
     await act(async () => {
       fireEvent.click(enqueueBtn);
     });
@@ -259,7 +264,7 @@ describe('End-to-End Product UI Workflow (Phase C)', () => {
     // Verify render was submitted to native
     const renderCommands = capturedCommands.filter((c) => c.command === 'render.enqueue');
     expect(renderCommands.length).toBe(1);
-    expect((renderCommands[0].payload as Record<string, unknown>).preset).toBe('1080p_sdr');
+    expect((renderCommands[0].payload as Record<string, unknown>).preset).toBe('2160p_hdr10');
 
     // 7. Verify atomic Close Project via TopBar
     const closeBtn = screen.getByTitle(/Close active project/i);

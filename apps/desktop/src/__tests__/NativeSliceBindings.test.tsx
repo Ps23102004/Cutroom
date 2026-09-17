@@ -339,6 +339,89 @@ describe('Native vertical-slice frontend bindings', () => {
     expect((addRequest?.payload as Record<string, unknown>).trackId).toBeUndefined();
   });
 
+  it('sends setColor with the exact camelCase color payload through updateClipColor', async () => {
+    let colorRequest: Record<string, unknown> | undefined;
+    const gradedComposition = {
+      ...composition,
+      version: 5,
+      clips: [
+        {
+          id: 'clip-1',
+          trackId: 'track-primary',
+          assetId: 'asset-1',
+          name: 'take.mov',
+          inTicks: '0',
+          outTicks: '48000',
+          timelineStartTicks: '0',
+          timelineDurationTicks: '48000',
+          colorGrade: {
+            inputColorSpace: 's_log3',
+            grade: {
+              exposureEv: 0.5,
+              contrast: 1.1,
+              saturation: 1,
+              wbTemp: 0,
+              wbTint: 0,
+              lut: { path: '/luts/sony.cube', expectedSha256: 'deadbeef' },
+            },
+          },
+        },
+      ],
+    };
+    window.__TAURI__ = {
+      core: {
+        invoke: async <T,>(_command: string, args?: Record<string, unknown>): Promise<T> => {
+          const request = args?.request as Record<string, unknown>;
+          if (request.command === 'composition.apply') {
+            colorRequest = request;
+            return { ok: true, data: gradedComposition } as T;
+          }
+          return { ok: true, data: [] } as T;
+        },
+      },
+    };
+
+    const { result } = renderHook(() => useApp(), { wrapper });
+    act(() => {
+      result.current.setActiveProject(project('project-a'));
+      result.current.setComposition(composition);
+    });
+    await act(async () => {
+      await result.current.updateClipColor('clip-1', {
+        inputColorSpace: 's_log3',
+        grade: {
+          exposureEv: 0.5,
+          contrast: 1.1,
+          saturation: 1,
+          wbTemp: 0,
+          wbTint: 0,
+          lut: { path: '/luts/sony.cube', expectedSha256: 'deadbeef' },
+        },
+      });
+    });
+
+    expect(colorRequest?.project_id).toBe('project-a');
+    const payload = colorRequest?.payload as Record<string, unknown>;
+    expect(payload.action).toBe('setColor');
+    expect(payload.clipId).toBe('clip-1');
+    expect(payload.color).toEqual({
+      inputColorSpace: 's_log3',
+      grade: {
+        exposureEv: 0.5,
+        contrast: 1.1,
+        saturation: 1,
+        wbTemp: 0,
+        wbTint: 0,
+        lut: { path: '/luts/sony.cube', expectedSha256: 'deadbeef' },
+      },
+    });
+    // The returned composition (with the native camelCase colorGrade DTO) becomes state.
+    expect(result.current.composition?.clips[0]).toMatchObject({
+      id: 'clip-1',
+      colorGrade: { inputColorSpace: 's_log3' },
+    });
+  });
+
   it('creates UUIDv4 operation IDs and fails explicitly without secure UUID support', () => {
     expect(createOperationId()).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
     vi.stubGlobal('crypto', {});

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { RouteId } from '../routes/manifest';
-import { Project, Asset, Composition, Revision, Job, OutputPreset, ProjectBrief } from '../lib/contracts';
+import { FIXTURES_ENABLED } from '../lib/qaFlags';
+import { Project, Asset, Composition, Revision, Job, OutputPreset, ProjectBrief, ClipColor, OUTPUT_PRESET_SPECS } from '../lib/contracts';
 import { isNativeAvailable, dispatchNativeCommand, NATIVE_COMMANDS, createOperationId, NativeResponse } from '../lib/native';
 import {
   FIXTURE_PROJECT,
@@ -63,6 +64,7 @@ export interface AppContextType {
   }) => Promise<void>;
   splitClip: (clipId: string, splitPointTicks: string) => Promise<void>;
   trimClip: (clipId: string, newInTicks: string, newOutTicks: string) => Promise<void>;
+  updateClipColor: (clipId: string, color: ClipColor) => Promise<void>;
   replaceClip: (clipId: string, assetId: string, sourceInTicks: string, sourceOutTicks: string) => Promise<void>;
   removeClip: (clipId: string) => Promise<void>;
   reorderClips: (clipId: string, direction: 'left' | 'right') => Promise<void>;
@@ -191,7 +193,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Explicit opt-in fixture loader (strictly development-only)
   const enableFixtureMode = useCallback(() => {
-    if (!import.meta.env.DEV) {
+    if (!FIXTURES_ENABLED) {
       console.warn('Fixture mode is restricted to development builds.');
       return;
     }
@@ -317,7 +319,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const generation = ++projectGenerationRef.current;
     openSequenceRef.current = generation;
 
-    if (isFixtureMode && import.meta.env.DEV) {
+    if (isFixtureMode && FIXTURES_ENABLED) {
       const found = projects.find((p) => p.id === id);
       if (found) setActiveProject(found);
       return;
@@ -351,7 +353,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       throw err;
     }
 
-    if (isFixtureMode && import.meta.env.DEV) {
+    if (isFixtureMode && FIXTURES_ENABLED) {
       const err = new Error('Exit fixture mode before importing media with the native file picker.');
       setLastError(err.message);
       throw err;
@@ -408,7 +410,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       throw err;
     }
 
-    if (isFixtureMode && import.meta.env.DEV) {
+    if (isFixtureMode && FIXTURES_ENABLED) {
       setComposition((prev) => {
         if (!prev) return null;
         const targetTrackId = params.trackId ?? prev.tracks.find((track) => track.kind === 'primary_video')?.id;
@@ -467,7 +469,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Split Clip
   const splitClip = useCallback(async (clipId: string, splitPointTicks: string): Promise<void> => {
-    if (isFixtureMode && import.meta.env.DEV) {
+    if (isFixtureMode && FIXTURES_ENABLED) {
       setComposition((prev) => {
         if (!prev) return null;
         const target = prev.clips.find((c) => c.id === clipId);
@@ -536,7 +538,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Trim Clip
   const trimClip = useCallback(async (clipId: string, newInTicks: string, newOutTicks: string): Promise<void> => {
-    if (isFixtureMode && import.meta.env.DEV) {
+    if (isFixtureMode && FIXTURES_ENABLED) {
       setComposition((prev) => {
         if (!prev) return null;
         const nextClips = prev.clips.map((c) => {
@@ -586,6 +588,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (projectId && isCurrentProjectGeneration(projectId, generation)) setComposition(res.data);
   }, [isFixtureMode, activeProject, composition]);
 
+  // Update Clip Color — set per-clip color grade (input color space + grade + LUT).
+  const updateClipColor = useCallback(async (clipId: string, color: ClipColor): Promise<void> => {
+    if (isFixtureMode && FIXTURES_ENABLED) {
+      setComposition((prev) => {
+        if (!prev) return null;
+        const nextClips = prev.clips.map((c) => {
+          if (c.id !== clipId) return c;
+          return {
+            ...c,
+            colorGrade: color,
+          };
+        });
+        return {
+          ...prev,
+          version: prev.version + 1,
+          clips: nextClips,
+          updatedAt: new Date().toISOString(),
+        };
+      });
+      return;
+    }
+
+    const projectId = activeProject?.id;
+    const generation = projectGenerationRef.current;
+    const operation_id = getOperationId();
+    const expected_version = composition?.version ?? 0;
+    const res = await dispatchNativeCommand<Composition>({
+      command: NATIVE_COMMANDS.COMPOSITION_APPLY,
+      project_id: projectId,
+      expected_version,
+      operation_id,
+      payload: {
+        operation_id,
+        action: 'setColor',
+        clipId,
+        color,
+      },
+    });
+
+    if (!res.ok) {
+      if (projectId && isCurrentProjectGeneration(projectId, generation)) throw handleMutationError(res.error);
+      throw new Error('Clip color update was superseded by a newer project operation.');
+    }
+    if (projectId && isCurrentProjectGeneration(projectId, generation)) setComposition(res.data);
+  }, [isFixtureMode, activeProject, composition]);
+
   // Replace Clip — swap a timeline clip's source asset/range in place.
   const replaceClip = useCallback(async (
     clipId: string,
@@ -593,7 +641,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     sourceInTicks: string,
     sourceOutTicks: string,
   ): Promise<void> => {
-    if (isFixtureMode && import.meta.env.DEV) {
+    if (isFixtureMode && FIXTURES_ENABLED) {
       setComposition((prev) => {
         if (!prev) return null;
         const nextClips = prev.clips.map((c) => {
@@ -647,7 +695,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Remove Clip
   const removeClip = useCallback(async (clipId: string): Promise<void> => {
-    if (isFixtureMode && import.meta.env.DEV) {
+    if (isFixtureMode && FIXTURES_ENABLED) {
       setComposition((prev) => {
         if (!prev) return null;
         return {
@@ -685,7 +733,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Reorder Clips
   const reorderClips = useCallback(async (clipId: string, direction: 'left' | 'right'): Promise<void> => {
-    if (isFixtureMode && import.meta.env.DEV) {
+    if (isFixtureMode && FIXTURES_ENABLED) {
       setComposition((prev) => {
         if (!prev) return null;
         const idx = prev.clips.findIndex((c) => c.id === clipId);
@@ -741,7 +789,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       throw err;
     }
 
-    if (isFixtureMode && import.meta.env.DEV) {
+    if (isFixtureMode && FIXTURES_ENABLED) {
       const nextRevNum = revisions.length + 1;
       const newRev: Revision = {
         id: `rev-fixture-${Date.now()}`,
@@ -788,7 +836,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       throw err;
     }
 
-    if (isFixtureMode && import.meta.env.DEV) {
+    if (isFixtureMode && FIXTURES_ENABLED) {
       const target = revisions.find((r) => r.id === revisionId);
       if (!target) throw new Error('Revision not found');
 
@@ -840,7 +888,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       throw err;
     }
 
-    if (isFixtureMode && import.meta.env.DEV) {
+    if (isFixtureMode && FIXTURES_ENABLED) {
       const nextBrief: ProjectBrief = {
         goal: updates.goal ?? brief?.goal ?? '',
         audience: updates.audience ?? brief?.audience ?? '',
@@ -897,13 +945,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       throw err;
     }
 
-    if (isFixtureMode && import.meta.env.DEV) {
-      const presetLabels: Record<OutputPreset, string> = {
-        '1080p_sdr': '1080p Main SDR Master',
-        'vertical_9_16': '9:16 Vertical Cut',
-        'review_proxy': 'H.264 Fast Review Proxy',
-        'subtitle_package': 'SRT & WebVTT Caption Bundle',
-      };
+    if (isFixtureMode && FIXTURES_ENABLED) {
+      const presetLabels: Record<OutputPreset, string> = Object.fromEntries(
+        Object.entries(OUTPUT_PRESET_SPECS).map(([preset, spec]) => [preset, spec.label]),
+      ) as Record<OutputPreset, string>;
       const newJob: Job = {
         id: `job-fixture-${Date.now()}`,
         projectId: activeProject.id,
@@ -941,7 +986,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Cancel Job
   const cancelJob = useCallback(async (jobId: string): Promise<void> => {
-    if (isFixtureMode && import.meta.env.DEV) {
+    if (isFixtureMode && FIXTURES_ENABLED) {
       setJobs((prev) =>
         prev.map((j) => (j.id === jobId ? { ...j, status: 'cancelled', step: 'Cancelled by user' } : j))
       );
@@ -969,7 +1014,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Retry Job
   const retryJob = useCallback(async (jobId: string): Promise<void> => {
-    if (isFixtureMode && import.meta.env.DEV) {
+    if (isFixtureMode && FIXTURES_ENABLED) {
       setJobs((prev) =>
         prev.map((j) =>
           j.id === jobId ? { ...j, status: 'queued', step: 'Retrying task...', currentStep: 0, error: undefined } : j
@@ -1042,6 +1087,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addClip,
         splitClip,
         trimClip,
+        updateClipColor,
         removeClip,
         reorderClips,
         replaceClip,
