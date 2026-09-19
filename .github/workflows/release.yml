@@ -73,3 +73,18 @@ jobs:
             (4K/120 input, HDR10 output, per-clip grading, .cube LUTs).
 
             FFmpeg must be installed separately and available on PATH.
+
+            ## Installing
+
+            These builds are not code-signed, so macOS and Windows show a
+            one-time "unknown developer" warning. Full steps:
+            https://github.com/Ps23102004/Cutroom/blob/main/docs/INSTALL.md
+
+            - **macOS:** open the `.dmg`, drag to Applications, then
+              right-click the app → Open → Open (or System Settings →
+              Privacy & Security → Open Anyway).
+            - **Windows:** run the `-setup.exe`; on the SmartScreen warning
+              click More info → Run anyway.
+            - **Linux:** `sudo apt install ./Cutroom_*_amd64.deb` on
+              Ubuntu/Debian, `sudo dnf install ./Cutroom-*.rpm` on Fedora,
+              or `chmod +x` the AppImage and run it anywhere.
