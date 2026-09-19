@@ -19,7 +19,7 @@ Prebuilt installers for **Cutroom v0.1.0** are on the [releases page](https://gi
 | Linux | `Cutroom_0.1.0_amd64.AppImage` (or the `.deb` / `.rpm`) |
 
 Notes:
-- The apps are **not code-signed**, so macOS will show an “unidentified developer” warning (right-click → Open to run it) and Windows SmartScreen may ask for confirmation.
+- The apps are **not code-signed**, so macOS will show an “unidentified developer” warning (right-click → Open to run it) and Windows SmartScreen may ask for confirmation. Exact per-OS steps: [docs/INSTALL.md](docs/INSTALL.md).
 - **FFmpeg must be installed separately** and available on `PATH` (see prerequisites below) — rendering shells out to it.
 - Prefer building from source (below) if you want the latest `main` instead of the release snapshot.
 
