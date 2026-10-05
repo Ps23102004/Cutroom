@@ -23,3 +23,9 @@ __pycache__/
 apps/desktop/src-tauri/gen/schemas/linux-schema.json
 apps/desktop/src-tauri/gen/schemas/windows-schema.json
 dist-qa/
+# Agent working notes and build-process files, kept out of the repo.
+references/
+docs/NEXT_SESSION.md
+docs/BUILD_STATE.md
+docs/AGENT_LEDGER.jsonl
+docs/tasks/

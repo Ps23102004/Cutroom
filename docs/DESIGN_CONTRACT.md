@@ -3,7 +3,6 @@
 **Role:** Cutroom Frontend / Design Lead (Gemini 3.8 Flash via AGY)  
 **Consumer:** orchestrating agent (Orchestrator), GLM 5.3 (Planning/Review), GLM 5.2 (Backend Lead)  
 **Status:** Design contract with reviewer corrections from T0; runtime verification pending  
-**References:** `references/MASTER.md` (Sections 4, 5, 7, 8, 9), `references/build-pack/Cutroom_Build_Pack/DESIGN_CONFLICTS.md`
 
 ---
 

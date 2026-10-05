@@ -1,6 +1,6 @@
 # Cutroom
 
-**Cutroom** is a professional, local-first AI video production studio for creators and modern post-production teams. A high-performance **Rust-native timeline and media engine** paired with **strictly local AI models** running on your own machine — no cloud rendering, no uploads, no telemetry.
+**Cutroom** is a desktop video editor that runs entirely on your machine. The timeline and media engine are written in Rust (Tauri) and shell out to FFmpeg; the AI features run on local models. Nothing is rendered in the cloud, uploaded, or sent as telemetry.
 
 ![Cutroom demo — color grading and 4K/HDR delivery](assets/demo.gif)
 *Demo recorded from the fixture UI preview — the same interface as the desktop app.*
@@ -60,7 +60,7 @@ cargo tauri build
 
 ## Features
 
-### Professional color pipeline
+### Color pipeline
 - **Input up to 4K 120fps** — H.264/H.265, 8-bit and 10-bit, with strict validation
 - **HDR & camera log** — PQ/HLG tone mapping to SDR, HDR10 output, S-Log3 built-in de-log (V-Log/C-Log3 via manufacturer LUTs)
 - **Per-clip grading** — exposure, contrast, saturation, white balance, tint

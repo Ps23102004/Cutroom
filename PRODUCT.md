@@ -20,7 +20,7 @@ These are required capabilities, not current implementation claims. Core product
 Minimal near-black violet-noir; light-violet actions; ochre, maroon, sky blue and light green accents. Glass-inspired controls/navigation with readable matte content. Exact shared navigation: Home, Projects, Studio, AI Briefs, Review, Versions, Deliver, Settings. Jobs and Help are footer utilities. No invented slogans, model capabilities or activity.
 
 ## Evidence on Hand
-Full owner mandate and inspected build pack in references/. No running application, real screenshot or product benchmark yet. No current UI image exports found in supplied design toolkit.
+No running application, real screenshot or product benchmark yet. No current UI image exports found in supplied design toolkit.
 
 ## Accessibility & Inclusion
 Keyboard workflows, visible focus, labeled controls, reduced motion/transparency, text scaling and static WebGL fallback are required.
