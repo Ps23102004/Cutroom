@@ -1,5 +1,7 @@
 # Cutroom
 
+[![ci](https://github.com/Ps23102004/Cutroom/actions/workflows/ci.yml/badge.svg)](https://github.com/Ps23102004/Cutroom/actions/workflows/ci.yml)
+
 **Cutroom** is a desktop video editor that runs entirely on your machine. The timeline and media engine are written in Rust (Tauri) and shell out to FFmpeg; the AI features run on local models. Nothing is rendered in the cloud, uploaded, or sent as telemetry.
 
 ![Cutroom demo — color grading and 4K/HDR delivery](assets/demo.gif)
