@@ -88,7 +88,7 @@ cargo tauri build
 ### Trust & integrity
 - Frame/sample-exact rational timebase conversions
 - SHA-256 content-hashed immutable revisions
-- Source media is strictly read-only — originals are never modified
+- Source media is read-only — originals are never modified
 - Signed delivery manifests; rendered artifacts are verified before delivery
 
 ---
